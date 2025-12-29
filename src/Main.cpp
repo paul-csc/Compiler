@@ -3,13 +3,20 @@
 #include "Parser.h"
 
 int main() {
-    const std::string_view input = "x = 3 + 4 * 5;";
+    const char* fileName = "src.gl";
 
-    Compiler::Tokenizer tokenizer(input);
+    // open files
+    std::filesystem::path path = std::filesystem::current_path() / fileName;
+    std::ifstream srcFile(path, std::ios::in | std::ios::binary);
+    if (!srcFile) {
+        std::cerr << "Failed to open file: " << path << "\n";
+        return 1;
+    }
+
+    std::string input((std::istreambuf_iterator<char>(srcFile)), std::istreambuf_iterator<char>());
+
+    Compiler::Tokenizer tokenizer(std::move(input));
     const auto tokens = tokenizer.Tokenize();
-
-    Compiler::Parser parser(tokens);
-    const auto program = parser.ParseProgram();
 
     std::cout << "Tokens: \n";
     for (size_t i = 0; i < tokens.size(); ++i) {
@@ -21,6 +28,11 @@ int main() {
         }
         std::cout << "\n";
     }
+    std::cout << "\n";
+
+    Compiler::Parser parser(tokens);
+    const auto program = parser.ParseProgram();
+    program->print(std::cout);
 
     std::cin.get();
     return 0;

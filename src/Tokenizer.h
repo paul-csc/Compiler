@@ -4,8 +4,10 @@
 
 namespace Compiler {
 
-    static void Error(const char* msg) {
-        std::cerr << msg << "\n";
+    template<typename... Args>
+    static void Error(Args&&... args) {
+        (std::cerr << ... << std::forward<Args>(args)) << "\n";
+        std::cin.get();
         std::exit(1);
     }
 
@@ -44,7 +46,7 @@ namespace Compiler {
 
     class Tokenizer {
       public:
-        explicit Tokenizer(const std::string_view& src) : m_Src(src) { }
+        explicit Tokenizer(const std::string& src) : m_Src(src) { }
 
         std::vector<Token> Tokenize() const {
             const size_t size = m_Src.size();
@@ -85,7 +87,7 @@ namespace Compiler {
                     try {
                         tokens.emplace_back(std::stod(buf), buf);
                     } catch (...) {
-                        Error(std::format("Failed to parse token '{}'", buf).c_str());
+                        Error("Failed to parse token '", buf, "'");
                     }
 
                     buf.clear();
@@ -112,7 +114,7 @@ namespace Compiler {
         }
 
       private:
-        const std::string_view m_Src;
+        const std::string m_Src;
     };
 
 }  // namespace Compiler
