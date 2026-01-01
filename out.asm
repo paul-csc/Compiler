@@ -1,7 +1,8 @@
+section .text
 global _start
 _start:
-; assign a
-; assign bc
+; declare a
+; assign 23 to a
 mov rax, 60
-mov rdi, 127
+mov rdi, 3
 syscall

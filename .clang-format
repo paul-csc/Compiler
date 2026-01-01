@@ -44,7 +44,7 @@ AlignTrailingComments:
 # AllowAllParametersOfDeclarationOnNextLine: true
 # AllowBreakBeforeNoexceptSpecifier: Never
 # AllowShortBlocksOnASingleLine: Never
-# AllowShortCaseLabelsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: true
 # AllowShortCompoundRequirementOnASingleLine: true
 # AllowShortEnumsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Inline
@@ -167,7 +167,7 @@ PackConstructorInitializers: NextLine
 # PenaltyExcessCharacter: 1000000
 # PenaltyIndentedWhitespace: 0
 # PenaltyReturnTypeOnItsOwnLine: 60
-# PointerAlignment: Right
+PointerAlignment: Left
 # PPIndentWidth: -1
 # QualifierAlignment: Leave
 # ReferenceAlignment: Pointer

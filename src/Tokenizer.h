@@ -1,107 +1,101 @@
 #pragma once
 
-#include "pch.h"
+#include <cstdint>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace Glassy {
 
-template <typename... Args>
-inline void Error(uint16_t line, Args &&...args) {
-    (std::cerr << "At line " << line << ": " << ... << std::forward<Args>(args)) << "\n";
-    std::cin.get();
-    std::exit(1);
-}
-
 // clang-format off
 
-    enum TokenType { 
-        IDENTIFIER,
-        KEYWORD,
-        SEPARATOR,
-        OPERATOR,
-        LITERAL
-    };
+enum TokenType { 
+    IDENTIFIER,
+    KEYWORD,
+    SEPARATOR,
+    OPERATOR,
+    LITERAL
+};
 
-    enum class Keyword {
-        EXIT,
-        LET,
-        KEYWORD_NB
-    };
-    inline const std::unordered_map<std::string_view, Keyword> keywords = {
-        { "exit", Keyword::EXIT },
-        {  "let", Keyword::LET  }
-    };
+using Identifier = std::string;
+using Literal = int; // change to double later
 
-    enum class Separator {
-        L_PAREN,
-        R_PAREN,
-        L_BRACKET,
-        R_BRACKET,
-        L_BRACE,
-        R_BRACE,
-        SEMI,
-        SEPARATOR_NB
-    };
-    inline const std::unordered_map<char, Separator> separators = {
-        {'(', Separator::L_PAREN},
-        {')', Separator::R_PAREN},
-        {'[', Separator::L_BRACKET},
-        {']', Separator::R_BRACKET},
-        {'{', Separator::L_BRACE},
-        {'}', Separator::R_BRACE},
-        {';', Separator::SEMI}
-    };
+enum class Keyword {
+    EXIT,
+    LET,
+    KEYWORD_NB
+};
 
-    enum class Operator {
-        PLUS,
-        MINUS,
-        STAR,
-        SLASH,
-        PERCENT,
-        CARET,
-        EQUAL,
-        OPERATOR_NB
-    };
-    inline const char OperatorToChar[int(Operator::OPERATOR_NB)] = {
-        '+', 
-        '-',
-        '*',
-        '/',
-        '%',
-        '^',
-        '='
-    };
+enum class Separator {
+    L_PAREN,
+    R_PAREN,
+    L_BRACKET,
+    R_BRACKET,
+    L_BRACE,
+    R_BRACE,
+    SEMI,
+    SEPARATOR_NB
+};
+
+enum class Operator {
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
+    PERCENT,
+    CARET,
+    EQUAL,
+    OPERATOR_NB
+};
 
 // clang-format on
 
-using SubType = std::variant<Keyword, Separator, Operator>;
+extern const std::string_view SeparatorToStr[];
+extern const std::string_view OperatorToStr[];
+
+struct SourceLocation {
+    uint16_t line = 1;
+    uint16_t column = 1;
+};
 
 struct Token {
-    Token(const std::string &id, uint16_t ln) : type(IDENTIFIER), identifer(id), line(ln) {}
+    Token(std::string_view id, SourceLocation l)
+        : type(IDENTIFIER), location(l), lexeme(id), value(std::string(id)) {}
 
-    Token(Keyword kw, uint16_t ln) : type(KEYWORD), subType(kw), line(ln) {}
+    Token(Keyword kw, SourceLocation l, std::string_view lex)
+        : type(KEYWORD), location(l), lexeme(lex), value(kw) {}
 
-    Token(double val, uint16_t ln) : type(LITERAL), value(val), line(ln) {}
+    Token(Literal v, SourceLocation l, std::string_view lex)
+        : type(LITERAL), location(l), lexeme(lex), value(v) {}
 
-    Token(Operator op, uint16_t ln) : type(OPERATOR), subType(op), line(ln) {}
+    Token(Operator op, SourceLocation l)
+        : type(OPERATOR), location(l), lexeme(OperatorToStr[size_t(op)]), value(op) {}
 
-    Token(Separator sep, uint16_t ln) : type(SEPARATOR), subType(sep), line(ln) {}
+    Token(Separator sep, SourceLocation l)
+        : type(SEPARATOR), location(l), lexeme(SeparatorToStr[size_t(sep)]), value(sep) {}
+
+    template <typename T>
+    const T* GetValue() const {
+        return std::get_if<T>(&value);
+    }
 
     TokenType type;
-    std::optional<SubType> subType = std::nullopt;
+    SourceLocation location;
 
-    std::optional<std::string> identifer = std::nullopt; // valid if type == IDENTIFIER
-    std::optional<double> value = std::nullopt; // valid if type == LITERAL
+    std::string_view lexeme;
 
-    uint16_t line;
+    std::variant<std::monostate, Identifier, Literal, Keyword, Operator, Separator> value;
 };
 
 class Tokenizer {
   public:
-    explicit Tokenizer(const std::string &src);
+    explicit Tokenizer(std::string_view src);
     std::vector<Token> Tokenize() const;
 
   private:
-    const std::string m_Src;
+    std::string_view m_Src;
 };
+
+void Error(SourceLocation loc, const std::string& msg);
 
 } // namespace Glassy

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "pch.h"
 #include "Tokenizer.h"
+#include <memory>
+#include <optional>
 
 namespace Glassy {
 
 /*
     TODO:
-    - parenthesis precendence
     - unary operators
     - variable expressions
 */
@@ -23,80 +23,100 @@ namespace Glassy {
 */
 
 struct ASTNode {
+    ASTNode() = default;
     virtual ~ASTNode() = default;
-    virtual void print(std::ostream &out) const = 0;
+    ASTNode(const ASTNode&) = delete;
+    ASTNode& operator=(const ASTNode&) = delete;
 
-    friend std::ostream &operator<<(std::ostream &os, const ASTNode &node) {
+    virtual void print(std::ostream& out) const = 0;
+
+    friend std::ostream& operator<<(std::ostream& os, const ASTNode& node) {
         node.print(os);
         return os;
     }
 };
 
-struct Expression : ASTNode {};
+struct Expression : ASTNode {
+    Expression() = default;
+    virtual ~Expression() = default;
+    explicit Expression(Literal val) : value(val) {}
+
+    Literal value;
+};
 
 struct LiteralExpr : Expression {
-    explicit LiteralExpr(double val) : value(val) {}
+    explicit LiteralExpr(Literal val) : Expression(val) {}
 
-    void print(std::ostream &out) const override { out << value; }
-
-    double value;
+    void print(std::ostream& out) const override { out << value; }
 };
 
 struct BinaryExpr : Expression {
-    BinaryExpr(char op, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
-        : op(op), left(std::move(left)), right(std::move(right)) {}
+    BinaryExpr(Operator op, std::unique_ptr<Expression> lhs, std::unique_ptr<Expression> rhs)
+        : op(op), left(std::move(lhs)), right(std::move(rhs)) {
+        switch (op) {
+            case Operator::PLUS: value = left->value + right->value; break;
+            case Operator::MINUS: value = left->value - right->value; break;
+            case Operator::STAR: value = left->value * right->value; break;
+            case Operator::SLASH: value = left->value / right->value; break;
 
-    void print(std::ostream &out) const override { out << *left << ' ' << op << ' ' << *right; }
+            default: break;
+        }
+    }
 
+    void print(std::ostream& out) const override {
+        out << *left << ' ' << OperatorToStr[size_t(op)][0] << ' ' << *right;
+    }
+
+    Operator op;
     std::unique_ptr<Expression> left;
-    char op;
     std::unique_ptr<Expression> right;
 };
 
 struct Statement : ASTNode {
-    virtual void GenerateAsm(std::string &out) const = 0;
+    virtual ~Statement() = default;
+    virtual void GenerateAsm(std::string& out) const = 0;
 };
 
 struct AssignStmt : Statement {
-    AssignStmt(const std::string &name, std::unique_ptr<Expression> value)
-        : identifier(name), value(std::move(value)) {}
+    AssignStmt(std::string_view name, std::unique_ptr<Expression> value)
+        : identifier(name), expr(std::move(value)) {}
 
-    void GenerateAsm(std::string &out) const override { out += "; assign " + identifier + "\n"; }
+    void GenerateAsm(std::string& out) const override {
+        out += "; assign " + std::to_string(expr->value) + " to " + identifier + "\n";
+    }
 
-    void print(std::ostream &out) const override { out << identifier << " = " << *value << ";"; }
+    void print(std::ostream& out) const override { out << identifier << " = " << expr->value << ";"; }
 
-    std::string identifier;
-    std::unique_ptr<Expression> value;
+    Identifier identifier;
+    std::unique_ptr<Expression> expr;
 };
 
 struct DeclarStmt : Statement {
-    DeclarStmt(const std::string &name) : identifier(name) {}
+    DeclarStmt(std::string_view name) : identifier(name) {}
 
-    void GenerateAsm(std::string &out) const override { out += "; declare " + identifier + "\n"; }
+    void GenerateAsm(std::string& out) const override { out += "; declare " + identifier + "\n"; }
 
-    void print(std::ostream &out) const override { out << identifier << ";"; }
+    void print(std::ostream& out) const override { out << "let " << identifier << ";"; }
 
-    std::string identifier;
+    Identifier identifier;
 };
 
 struct ExitStmt : Statement {
-    ExitStmt(uint8_t value) : exitValue(value) {}
+    ExitStmt(std::unique_ptr<Expression> e) : expr(std::move(e)) {}
 
-    void GenerateAsm(std::string &out) const override {
-        out += "mov rax, 60\nmov rdi, " + std::to_string(exitValue) + "\nsyscall\n";
+    void GenerateAsm(std::string& out) const override {
+        out += "mov rax, 60\nmov rdi, " + std::to_string(static_cast<uint8_t>(expr->value)) + "\nsyscall\n";
     }
 
-    void print(std::ostream &out) const override {
-        out << "exit " << static_cast<unsigned int>(exitValue) << ";";
-    }
+    void print(std::ostream& out) const override { out << "exit " << expr->value << ";"; }
 
-    uint8_t exitValue;
+    std::unique_ptr<Expression> expr;
 };
 
 struct Program : ASTNode {
-    void print(std::ostream &out) const override {
+    void print(std::ostream& out) const override {
         out << "Program:\n";
-        for (const auto &stmt : statements) {
+        for (const auto& stmt : statements) {
             out << *stmt << '\n';
         }
     }
@@ -106,7 +126,7 @@ struct Program : ASTNode {
 
 class Parser {
   public:
-    explicit Parser(const std::vector<Token> &tokens);
+    explicit Parser(const std::vector<Token>& tokens);
 
     std::unique_ptr<Program> ParseProgram();
 
@@ -122,7 +142,7 @@ class Parser {
     template <typename T, typename... Ts>
     std::optional<T> match(T type, Ts... rest);
 
-    Token expect(TokenType type, const char *msg);
+    Token expect(TokenType type, const char* msg);
 
     const std::vector<Token> m_Tokens;
     size_t m_Index = 0;
@@ -131,11 +151,11 @@ class Parser {
 template <typename T, typename... Ts>
 inline std::optional<T> Parser::match(T first, Ts... rest) {
     auto tok = peek();
-    if (!tok || !tok->subType) {
+    if (!tok) {
         return std::nullopt;
     }
 
-    if (auto val = std::get_if<T>(&*tok->subType)) {
+    if (auto val = tok->GetValue<T>()) {
         if (((*val == first) || ... || (*val == rest))) {
             consume();
             return *val;

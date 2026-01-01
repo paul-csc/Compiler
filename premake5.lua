@@ -1,6 +1,7 @@
 workspace "Glassy"
     architecture "x64"
     location "."
+    toolset "clang"
 
     configurations
     {
@@ -8,12 +9,13 @@ workspace "Glassy"
         "Release"
     }
 
+    buildoptions { "-fcolor-diagnostics" }
+
 project "Glassy"
     language "C++"
+    cppdialect "C++20"
     kind "ConsoleApp"
-
-    pchheader "src/pch.h"
-    pchsource "src/pch.cpp"
+    staticruntime "off"
 
     files
     {
@@ -21,14 +23,16 @@ project "Glassy"
         "src/**.hpp",
         "src/**.cpp"
     }
-    
-    filter "system:windows"
-        cppdialect "C++20"
-    filter {}
+
+    includedirs { "src" }
     
     filter "configurations:Debug"
-        symbols "On"
+        defines { "DEBUG" }
         runtime "Debug"
+        symbols "On"
 
     filter "configurations:Release"
+        defines { "RELEASE" }
+        runtime "Release"
         optimize "On"
+        symbols "Off"

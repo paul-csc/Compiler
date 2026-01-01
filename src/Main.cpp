@@ -1,11 +1,15 @@
-#include "pch.h"
 #include "Generator.h"
 #include "Parser.h"
 #include "Tokenizer.h"
 
+#include <filesystem>
+#include <format>
+#include <fstream>
+#include <iostream>
+
 int main() {
-    const char *inputFileName = "src.glassy";
-    const char *outputFileName = "out.asm";
+    const char* inputFileName = "src.glassy";
+    const char* outputFileName = "out.asm";
 
     // open files
     const std::filesystem::path path = std::filesystem::current_path();
@@ -22,11 +26,16 @@ int main() {
         return 1;
     }
 
-    std::string input = std::string(std::istreambuf_iterator<char>(inputFile), std::istreambuf_iterator<char>());
+    std::string input =
+        std::string(std::istreambuf_iterator<char>(inputFile), std::istreambuf_iterator<char>());
 
-    Glassy::Tokenizer tokenizer(std::move(input));
+    Glassy::Tokenizer tokenizer(input);
 
     const auto tokens = tokenizer.Tokenize();
+
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        std::cout << std::format("{}: {}\n", i + 1, tokens[i].lexeme);
+    }
 
     Glassy::Parser parser(tokens);
     auto program = parser.ParseProgram();

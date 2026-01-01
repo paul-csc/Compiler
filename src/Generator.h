@@ -1,6 +1,5 @@
 #pragma once
 
-#include "pch.h"
 #include "Parser.h"
 
 namespace Glassy {
@@ -10,9 +9,9 @@ class Generator {
     Generator(std::unique_ptr<Program> program) : m_Program(std::move(program)) {}
 
     std::string GenerateAssembly() const {
-        std::string result = "global _start\n_start:\n";
+        std::string result = "section .text\nglobal _start\n_start:\n";
 
-        for (const auto &stmt : m_Program->statements) {
+        for (const auto& stmt : m_Program->statements) {
             stmt->GenerateAsm(result);
         }
 
