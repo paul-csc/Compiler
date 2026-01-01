@@ -24,6 +24,9 @@ std::unique_ptr<Expression> Parser::parseFactor() {
     if (tok->type == LITERAL) {
         consume();
         return std::make_unique<LiteralExpr>(*tok->GetValue<Literal>());
+    } else if (tok->type == IDENTIFIER) {
+        consume();
+        return std::make_unique<IdentifierExpr>(*tok->GetValue<Identifier>());
     }
 
     if (match<Separator>(Separator::L_PAREN)) {
@@ -66,10 +69,13 @@ std::unique_ptr<Statement> Parser::parseStatement() {
 
         return std::make_unique<ExitStmt>(std::move(expr));
     } else if (match<Keyword>(Keyword::LET)) {
-        Identifier identifer = *expect(IDENTIFIER, "Expected identifer").GetValue<Identifier>();
+        Identifier name = *expect(IDENTIFIER, "Expected identifer").GetValue<Identifier>();
+
+        expect(OPERATOR, "Expected '='");
+        auto expr = parseExpression();
         expect(SEPARATOR, "Expected ';'");
 
-        return std::make_unique<DeclarStmt>(identifer);
+        return std::make_unique<DeclarStmt>(name, std::move(expr));
     }
 
     Identifier name = *expect(IDENTIFIER, "Expected identifier").GetValue<Identifier>();

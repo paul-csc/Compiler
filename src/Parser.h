@@ -12,17 +12,8 @@ namespace Glassy {
     - variable expressions
 */
 
-/*
-    Grammar:
-
-    program    -> statement*
-    statement  -> ((identifier "=" expression) | (exit LIT)) ";"
-    expression -> term (("+" | "-") term)*
-    term       -> factor (("*" | "/") factor)*
-    factor     -> LIT | IDENTIFIER | "(" expression ")"
-*/
-
 struct LiteralExpr;
+struct IdentifierExpr;
 struct BinaryExpr;
 struct AssignStmt;
 struct DeclarStmt;
@@ -31,6 +22,7 @@ struct Program;
 
 struct AstVisitor {
     virtual void visit(const LiteralExpr& node) = 0;
+    virtual void visit(const IdentifierExpr& node) = 0;
     virtual void visit(const BinaryExpr& node) = 0;
     virtual void visit(const AssignStmt& node) = 0;
     virtual void visit(const DeclarStmt& node) = 0;
@@ -56,32 +48,30 @@ struct ASTNode {
 };
 
 struct Expression : ASTNode {
-    Expression() = default;
     virtual ~Expression() = default;
-    explicit Expression(Literal val) : value(val) {}
+};
+
+struct LiteralExpr : Expression { // 3
+    explicit LiteralExpr(Literal val) : value(val) {}
+
+    void print(std::ostream& out) const override { out << value; }
+    void accept(AstVisitor& visitor) const override { visitor.visit(*this); }
 
     Literal value;
 };
 
-struct LiteralExpr : Expression {
-    explicit LiteralExpr(Literal val) : Expression(val) {}
+struct IdentifierExpr : Expression { // a
+    explicit IdentifierExpr(std::string_view id) : name(id) {}
 
-    void print(std::ostream& out) const override { out << value; }
+    void print(std::ostream& out) const override { out << name; }
     void accept(AstVisitor& visitor) const override { visitor.visit(*this); }
+
+    Identifier name;
 };
 
-struct BinaryExpr : Expression {
+struct BinaryExpr : Expression { // 3 + b
     BinaryExpr(Operator op, std::unique_ptr<Expression> lhs, std::unique_ptr<Expression> rhs)
-        : op(op), left(std::move(lhs)), right(std::move(rhs)) {
-        switch (op) {
-            case Operator::PLUS: value = left->value + right->value; break;
-            case Operator::MINUS: value = left->value - right->value; break;
-            case Operator::STAR: value = left->value * right->value; break;
-            case Operator::SLASH: value = left->value / right->value; break;
-
-            default: break;
-        }
-    }
+        : op(op), left(std::move(lhs)), right(std::move(rhs)) {}
 
     void print(std::ostream& out) const override {
         out << *left << ' ' << OperatorToStr[size_t(op)][0] << ' ' << *right;
@@ -97,30 +87,32 @@ struct Statement : ASTNode {
     virtual ~Statement() = default;
 };
 
-struct AssignStmt : Statement {
-    AssignStmt(std::string_view name, std::unique_ptr<Expression> value)
-        : identifier(name), expr(std::move(value)) {}
+struct AssignStmt : Statement { // a = 3 + b
+    AssignStmt(std::string_view name, std::unique_ptr<Expression> expr)
+        : identifier(name), expr(std::move(expr)) {}
 
-    void print(std::ostream& out) const override { out << identifier << " = " << expr->value << ";"; }
+    void print(std::ostream& out) const override { out << identifier << " = " << *expr << ";"; }
     void accept(AstVisitor& visitor) const override { visitor.visit(*this); }
 
     Identifier identifier;
     std::unique_ptr<Expression> expr;
 };
 
-struct DeclarStmt : Statement {
-    DeclarStmt(std::string_view name) : identifier(name) {}
+struct DeclarStmt : Statement { // let a = 3 + b
+    DeclarStmt(std::string_view name, std::unique_ptr<Expression> expr)
+        : identifier(name), expr(std::move(expr)) {}
 
-    void print(std::ostream& out) const override { out << "let " << identifier << ";"; }
+    void print(std::ostream& out) const override { out << "let " << identifier << " = " << *expr << ";"; }
     void accept(AstVisitor& visitor) const override { visitor.visit(*this); }
 
     Identifier identifier;
+    std::unique_ptr<Expression> expr;
 };
 
-struct ExitStmt : Statement {
+struct ExitStmt : Statement { // exit 3;
     ExitStmt(std::unique_ptr<Expression> e) : expr(std::move(e)) {}
 
-    void print(std::ostream& out) const override { out << "exit " << expr->value << ";"; }
+    void print(std::ostream& out) const override { out << "exit " << *expr << ";"; }
     void accept(AstVisitor& visitor) const override { visitor.visit(*this); }
 
     std::unique_ptr<Expression> expr;

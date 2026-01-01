@@ -30,14 +30,8 @@ int main() {
         std::string(std::istreambuf_iterator<char>(inputFile), std::istreambuf_iterator<char>());
 
     Glassy::Tokenizer tokenizer(input);
-
-    const auto tokens = tokenizer.Tokenize();
-
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        std::cout << std::format("{}: {}\n", i + 1, tokens[i].lexeme);
-    }
-
-    Glassy::Parser parser(tokens);
+    Glassy::Parser parser(tokenizer.Tokenize());
+    
     auto program = parser.ParseProgram();
     program->print(std::cout);
 

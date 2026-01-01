@@ -97,5 +97,6 @@ class Tokenizer {
 };
 
 void Error(SourceLocation loc, const std::string& msg);
+void Error(const std::string& msg);
 
 } // namespace Glassy
