@@ -1,7 +1,5 @@
+#include "pch.h"
 #include "Generator.h"
-#include "Error.h"
-#include <iostream>
-#include <cassert>
 
 namespace Glassy {
 
@@ -22,12 +20,8 @@ std::string Generator::GenerateAsm() {
 
 // clang-format off
 void Generator::generateTerm(const Term* term) {
-    assert(term);
-
     std::visit(overloaded{
         [&](const TermIdentifier* termIdent) {
-            assert(termIdent);
-             
             if (!m_Variables.contains(termIdent->identifier)) {
                 Error("Undeclared variable '" + termIdent->identifier + "'");
             }
@@ -35,35 +29,35 @@ void Generator::generateTerm(const Term* term) {
             push("QWORD [rsp + " + std::to_string((m_StackSize - var.stackLocation - 1) * 8) + "]");
         },
         [&](const TermLiteral* termLiteral) {
-            assert(termLiteral);
-
             m_Output += "mov rax, " + termLiteral->literal + "\n";
             push("rax");
         },
         [&](const TermParen* termParen) {
-            assert(termParen);
-
             generateExpression(termParen->expr);
         }
     }, term->term);
 }
 
 void Generator::generateExpression(const Expression* expr) {
-    assert(expr);
-
     std::visit(overloaded{
         [&](const Term* term) {
             generateTerm(term);
         },
         [&](const ExprBinary* exprBinary) {
-            if (exprBinary->op == '+') {
-                generateExpression(exprBinary->right);
-                generateExpression(exprBinary->left);
-                pop("rax");
-                pop("rbx");
-                m_Output += "add rax, rbx\n";
-                push("rax");
+            generateExpression(exprBinary->right);
+            generateExpression(exprBinary->left);
+            pop("rax");
+            pop("rbx");
+
+            switch (exprBinary->op) {
+                case '+': m_Output += "add rax, rbx\n"; break;
+                case '-': m_Output += "sub rax, rbx\n"; break;
+                case '*': m_Output += "mul rbx\n"; break;
+                case '/': m_Output += "div rbx\n"; break;
+                default: Error(std::format("Unknow operator '{}'", exprBinary->op)); break;
             }
+
+            push("rax");
         }
     }, expr->expr);
 }
@@ -90,9 +84,11 @@ void Generator::generateStatement(const Statement* stmt) {
             generateExpression(stmtAssign->expr);
             pop("rax");
             const auto& var = m_Variables[stmtAssign->identifier];
-            m_Output += "mov [rsp + " + std::to_string((m_StackSize - var.stackLocation - 1) * 8) + "], rax\n";
+            m_Output +=
+                "mov [rsp + " + std::to_string((m_StackSize - var.stackLocation - 1) * 8) + "], rax\n";
         }
     }, stmt->stmt);
+    // clang-format on
 }
 
 } // namespace Glassy

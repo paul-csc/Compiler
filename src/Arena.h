@@ -1,8 +1,6 @@
 #pragma once
 
-#include <cstddef>
-#include <utility>
-#include <new>
+#include "pch.h"
 
 namespace Glassy {
 

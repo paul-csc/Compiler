@@ -1,7 +1,7 @@
 #pragma once
 
+#include "pch.h"
 #include "Parser.h"
-#include <unordered_map>
 
 namespace Glassy {
 
@@ -15,12 +15,12 @@ struct Generator {
         size_t stackLocation;
     };
 
-    template <class... Ts>
+    template <typename... Ts>
     struct overloaded : Ts... {
         using Ts::operator()...;
     };
 
-    template <class... Ts>
+    template <typename... Ts>
     overloaded(Ts...) -> overloaded<Ts...>;
 
     void generateTerm(const Term* term);

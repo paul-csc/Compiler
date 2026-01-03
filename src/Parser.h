@@ -1,11 +1,8 @@
 #pragma once
 
+#include "pch.h"
 #include "Arena.h"
-#include "Error.h"
 #include "Tokenizer.h"
-#include <optional>
-#include <ostream>
-#include <variant>
 
 namespace Glassy {
 
@@ -39,7 +36,7 @@ struct Term : ASTNode {
 };
 
 struct ExprBinary : ASTNode {
-    ExprBinary(char op, Expression* lhs, Expression* rhs) : op(op), left(lhs), right(rhs) {}
+    ExprBinary(char ch, Expression* lhs, Expression* rhs) : op(ch), left(lhs), right(rhs) {}
 
     char op;
     Expression* left;
@@ -87,41 +84,25 @@ class Parser {
     Expression* parseExpression();
     Statement* parseStatement();
 
-    std::optional<Token> peek(const int offset = 0) const {
-        if (m_Index + offset >= m_Tokens.size()) {
-            return std::nullopt;
-        }
-        return m_Tokens[m_Index + offset];
+    const Token& peek(int offset = 0) const {
+        return m_Tokens[m_Index + offset]; // always safe because EOF exists
     }
 
-    Token consume() {
-        if (m_Index >= m_Tokens.size()) {
-            Error(m_Tokens[m_Index - 1].location, "Unexpected end of file");
-        }
-        return m_Tokens[m_Index++];
-    }
+    const Token& consume() { return m_Tokens[m_Index++]; }
 
     template <typename... Args>
-    std::optional<Token> match(TokenType first, Args&&... rest) {
-        auto tok = peek();
-        if (!tok) {
-            return std::nullopt;
+    const Token* match(TokenType first, Args... rest) {
+        const Token& tok = peek();
+        if (((tok.type == first) || ... || (tok.type == rest))) {
+            return &consume();
         }
-
-        if (((tok->type == first) || ... || (tok->type == rest))) {
-            return consume();
-        }
-
-        return std::nullopt;
+        return nullptr;
     }
 
     Token expect(TokenType type, const char* msg) {
-        auto tok = peek();
-        if (!tok) {
-            Error(m_Tokens.back().location, msg);
-        }
-        if (tok->type != type) {
-            Error(tok->location, msg);
+        const Token& tok = peek();
+        if (tok.type != type) {
+            Error(tok.location, msg);
         }
         return consume();
     }

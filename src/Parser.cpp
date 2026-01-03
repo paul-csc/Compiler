@@ -1,6 +1,5 @@
+#include "pch.h"
 #include "Parser.h"
-#include "Error.h"
-#include <charconv>
 
 namespace Glassy {
 
@@ -11,7 +10,7 @@ Program* Parser::ParseProgram() {
     m_Index = 0;
     Program* program = m_Allocator.alloc<Program>();
 
-    while (peek()) {
+    while (peek().type != END_OF_FILE) {
         program->statements.push_back(parseStatement());
     }
 
@@ -20,35 +19,36 @@ Program* Parser::ParseProgram() {
 
 Term* Parser::parseTerm() {
     auto tok = peek();
-    if (!tok) {
+    if (tok.type == END_OF_FILE) {
         Error(m_Tokens.back().location, "Expected term");
     }
 
     if (auto t = match(LITERAL)) {
-        auto termLiteral = m_Allocator.alloc<TermLiteral>(t->value.value());
+        TermLiteral* termLiteral = m_Allocator.alloc<TermLiteral>(*t->value);
         return m_Allocator.alloc<Term>(termLiteral);
     } else if (auto t = match(IDENTIFIER)) {
-        auto termIdentifier = m_Allocator.alloc<TermIdentifier>(t->value.value());
+        TermIdentifier* termIdentifier = m_Allocator.alloc<TermIdentifier>(*t->value);
         return m_Allocator.alloc<Term>(termIdentifier);
     }
 
     if (match(L_PAREN)) {
-        auto expr = parseExpression();
+        Expression* expr = parseExpression();
         expect(R_PAREN, "Expected ')'");
-        auto termParen = m_Allocator.alloc<TermParen>(expr);
+        TermParen* termParen = m_Allocator.alloc<TermParen>(expr);
         return m_Allocator.alloc<Term>(termParen);
     }
 
-    Error(tok->location, "Unexpected token in term");
+    Error(tok.location, "Unexpected token in term");
     return nullptr; // never reached
 }
 
 Expression* Parser::parseExpression() {
-    auto left = m_Allocator.alloc<Expression>(parseTerm());
+    Expression* left = m_Allocator.alloc<Expression>(parseTerm());
 
     while (auto tok = match(PLUS, MINUS, STAR, SLASH)) {
-        auto right = m_Allocator.alloc<Expression>(parseTerm());
-        left->expr = m_Allocator.alloc<ExprBinary>(tok->ToStr()[0], left, right);
+        Expression* right = m_Allocator.alloc<Expression>(parseTerm());
+        ExprBinary* bin = m_Allocator.alloc<ExprBinary>(tok->ToStr()[0], left, right);
+        left = m_Allocator.alloc<Expression>(bin);
     }
 
     return left;
@@ -56,29 +56,29 @@ Expression* Parser::parseExpression() {
 
 Statement* Parser::parseStatement() {
     if (match(EXIT)) {
-        auto expr = parseExpression();
+        Expression* expr = parseExpression();
         expect(SEMI, "Expected ';'");
 
-        auto stmtExit = m_Allocator.alloc<StmtExit>(expr);
+        StmtExit* stmtExit = m_Allocator.alloc<StmtExit>(expr);
         return m_Allocator.alloc<Statement>(stmtExit);
     } else if (match(LET)) {
         std::string name = *expect(IDENTIFIER, "Expected identifer").value;
 
         expect(EQUAL, "Expected '='");
-        auto expr = parseExpression();
+        Expression* expr = parseExpression();
         expect(SEMI, "Expected ';'");
 
-        auto stmtLet = m_Allocator.alloc<StmtLet>(name, expr);
+        StmtLet* stmtLet = m_Allocator.alloc<StmtLet>(name, expr);
         return m_Allocator.alloc<Statement>(stmtLet);
     }
 
     std::string name = *expect(IDENTIFIER, "Expected identifier").value;
 
     expect(EQUAL, "Expected '='");
-    auto expr = parseExpression();
+    Expression* expr = parseExpression();
     expect(SEMI, "Expected ';");
 
-    auto stmtAssign = m_Allocator.alloc<StmtAssign>(name, expr);
+    StmtAssign* stmtAssign = m_Allocator.alloc<StmtAssign>(name, expr);
     return m_Allocator.alloc<Statement>(stmtAssign);
 }
 

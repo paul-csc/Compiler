@@ -14,6 +14,9 @@ project "Glassy"
     kind "ConsoleApp"
     staticruntime "off"
 
+    pchheader "pch.h"
+    pchsource "src/pch.cpp"
+
     files
     {
         "src/**.h",

@@ -1,10 +1,5 @@
+#include "pch.h"
 #include "Tokenizer.h"
-#include "Error.h"
-
-#include <cctype>
-#include <charconv>
-#include <format>
-#include <iostream>
 
 namespace Glassy {
 
@@ -78,14 +73,35 @@ std::vector<Token> Tokenizer::Tokenize() const {
             case ')': tokens.emplace_back(R_PAREN, startLoc); break;
             case ';': tokens.emplace_back(SEMI, startLoc); break;
 
-            default: Error(startLoc, std::format("Unrecognized token '{}'", c));
+            // comment
+            case '#':
+                while (m_Src[++i] != '\n')
+                    ;
+                ++loc.line;
+                break;
+
+            default: Error(startLoc, std::format("Unknow token '{}'", c));
         }
 
         ++i;
         ++loc.column;
     }
 
+    tokens.emplace_back(END_OF_FILE, loc);
+
     return tokens;
+}
+
+void Error(SourceLocation loc, const std::string& msg) {
+    std::cerr << std::format("{} [Ln {}, Col {}]\n", msg, loc.line, loc.column);
+    std::cin.get();
+    std::exit(1);
+}
+
+void Error(const std::string& msg) {
+    std::cerr << msg << "\n";
+    std::cin.get();
+    std::exit(1);
 }
 
 } // namespace Glassy
