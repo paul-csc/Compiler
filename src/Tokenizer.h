@@ -13,8 +13,6 @@ enum TokenType {
 
     L_PAREN,
     R_PAREN,
-    L_BRACKET,
-    R_BRACKET,
     L_BRACE,
     R_BRACE,
     SEMI,
@@ -38,17 +36,15 @@ struct SourceLocation {
 };
 
 constexpr std::string_view TokenToStr[TOKEN_TYPE_NB] = { "identifier", "literal", "exit", "var", "(", ")",
-    "[", "]", "{", "}", ";", "+", "-", "*", "/", "%", "^", "=", "eof" };
+    "{", "}", ";", "+", "-", "*", "/", "%", "^", "=", "eof" };
 
 constexpr std::string_view ToStr(TokenType type) {
-    return TokenToStr[type];
+    return TokenToStr.at(type);
 }
 
 struct Token {
     Token(TokenType type, SourceLocation loc) : type(type), location(loc) {}
     Token(TokenType type, SourceLocation loc, std::string_view v) : type(type), location(loc), value(v) {}
-
-    constexpr std::string_view ToStr() const { return TokenToStr[type]; }
 
     TokenType type;
     SourceLocation location;

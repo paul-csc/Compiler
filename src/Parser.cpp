@@ -55,7 +55,7 @@ Expression* Parser::parseExpression(int minPrecedence) {
         consume();
 
         Expression* right = parseExpression(*prec + 1);
-        ExprBinary* bin = m_Allocator.alloc<ExprBinary>(opTok.ToStr()[0], left, right);
+        ExprBinary* bin = m_Allocator.alloc<ExprBinary>(ToStr(opTok.type)[0], left, right);
         left = m_Allocator.alloc<Expression>(bin);
     }
 
@@ -78,6 +78,11 @@ Statement* Parser::parseStatement() {
 
         StmtDeclar* stmt = m_Allocator.alloc<StmtDeclar>(name, expr);
         return m_Allocator.alloc<Statement>(stmt);
+    } else if (match(L_BRACE)) {
+        Scope* scope = parseScope();
+        return m_Allocator.alloc<Statement>(scope);
+    } else if (match(R_BRACE)) {
+        return nullptr; // special tag for scope end
     }
 
     std::string name = *expect(IDENTIFIER).value;
@@ -88,6 +93,14 @@ Statement* Parser::parseStatement() {
 
     StmtAssign* stmt = m_Allocator.alloc<StmtAssign>(name, expr);
     return m_Allocator.alloc<Statement>(stmt);
+}
+
+Scope* Parser::parseScope() {
+    Scope* scope = m_Allocator.alloc<Scope>();
+    while (Statement* stmt = parseStatement()) {
+        scope->statements.push_back(stmt);
+    }
+    return scope;
 }
 
 } // namespace Glassy

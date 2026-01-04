@@ -69,6 +69,8 @@ std::vector<Token> Tokenizer::Tokenize(std::string_view src) {
             // separators
             case '(': tokens.emplace_back(L_PAREN, startLoc); break;
             case ')': tokens.emplace_back(R_PAREN, startLoc); break;
+            case '{': tokens.emplace_back(L_BRACE, startLoc); break;
+            case '}': tokens.emplace_back(R_BRACE, startLoc); break;
             case ';': tokens.emplace_back(SEMI, startLoc); break;
 
             // comments
@@ -91,7 +93,7 @@ std::vector<Token> Tokenizer::Tokenize(std::string_view src) {
 }
 
 void Error(SourceLocation loc, const std::string& msg) {
-    Error(std::format("{} [Ln {}, Col {}]\n", msg, loc.line, loc.column));
+    Error(std::format("{} [Ln {}, Col {}]", msg, loc.line, loc.column));
 }
 
 void Error(const std::string& msg) {
