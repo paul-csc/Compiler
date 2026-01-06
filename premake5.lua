@@ -1,4 +1,4 @@
-workspace "Glassy"
+workspace "Chess"
     architecture "x64"
     location "."
 
@@ -8,7 +8,7 @@ workspace "Glassy"
         "Release"
     }
 
-project "Glassy"
+project "Chess"
     language "C++"
     cppdialect "C++20"
     kind "ConsoleApp"

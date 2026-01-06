@@ -2,7 +2,7 @@
 
 #include "pch.h"
 
-namespace Glassy {
+namespace Compiler {
 
 class ArenaAllocator {
   public:
@@ -34,4 +34,4 @@ class ArenaAllocator {
     std::byte* m_Offset;
 };
 
-} // namespace Glassy
+} // namespace Compiler

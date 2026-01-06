@@ -4,7 +4,7 @@
 #include "Arena.h"
 #include "Tokenizer.h"
 
-namespace Glassy {
+namespace Compiler {
 
 struct Expression;
 struct Scope;
@@ -17,36 +17,36 @@ struct ASTNode {
 };
 
 struct TermLiteral : ASTNode {
-    explicit TermLiteral(std::string_view l) : literal(l) {}
-    std::string literal;
+    explicit TermLiteral(std::string_view l) : Literal(l) {}
+    std::string Literal;
 };
 struct TermIdentifier : ASTNode {
-    explicit TermIdentifier(std::string_view ident) : identifier(ident) {}
-    std::string identifier;
+    explicit TermIdentifier(std::string_view ident) : Identifier(ident) {}
+    std::string Identifier;
 };
 struct TermParen : ASTNode {
-    explicit TermParen(Expression* expr) : expr(expr) {}
-    Expression* expr;
+    explicit TermParen(Expression* expr) : Expr(expr) {}
+    Expression* Expr;
 };
 struct Term : ASTNode {
-     explicit Term(std::variant<TermLiteral*, TermIdentifier*, TermParen*> term) : term(term) {}
-    std::variant<TermLiteral*, TermIdentifier*, TermParen*> term;
+    explicit Term(std::variant<TermLiteral*, TermIdentifier*, TermParen*> term) : Term(term) {}
+    std::variant<TermLiteral*, TermIdentifier*, TermParen*> Term;
 };
 
 struct ExprBinary : ASTNode {
-    ExprBinary(char ch, Expression* lhs, Expression* rhs) : op(ch), left(lhs), right(rhs) {}
-    char op;
-    Expression* left;
-    Expression* right;
+    ExprBinary(char ch, Expression* lhs, Expression* rhs) : Op(ch), Left(lhs), Right(rhs) {}
+    char Op;
+    Expression* Left;
+    Expression* Right;
 };
 struct Expression : ASTNode {
-     explicit Expression(std::variant<ExprBinary*, Term*> expr) : expr(expr) {}
-    std::variant<ExprBinary*, Term*> expr;
+    explicit Expression(std::variant<ExprBinary*, Term*> expr) : Expr(expr) {}
+    std::variant<ExprBinary*, Term*> Expr;
 };
 
 struct StmtExit : ASTNode {
-    StmtExit(Expression* e) : expr(e) {}
-    Expression* expr;
+    StmtExit(Expression* e) : Expr(e) {}
+    Expression* Expr;
 };
 struct StmtAssign : ASTNode {
     StmtAssign(std::string_view name, Expression* expr) : identifier(name), expr(expr) {}
@@ -54,21 +54,27 @@ struct StmtAssign : ASTNode {
     Expression* expr;
 };
 struct StmtDeclar : ASTNode {
-    StmtDeclar(std::string_view name, Expression* expr) : identifier(name), expr(expr) {}
-    std::string identifier;
-    Expression* expr;
+    StmtDeclar(std::string_view name, Expression* expr) : Identifier(name), Expr(expr) {}
+    std::string Identifier;
+    Expression* Expr;
+};
+struct StmtIf : ASTNode {
+    StmtIf(Expression* cond, Scope* s) : Cond(cond), Scope(s) {}
+    Expression* Cond;
+    Scope* Scope;
 };
 struct Statement : ASTNode {
-     explicit Statement(std::variant<StmtExit*, StmtAssign*, StmtDeclar*, Scope*> stmt) : stmt(stmt) {}
-    std::variant<StmtExit*, StmtAssign*, StmtDeclar*, Scope*> stmt;
+    explicit Statement(std::variant<StmtExit*, StmtAssign*, StmtDeclar*, StmtIf*, Scope*> stmt)
+        : Stmt(stmt) {}
+    std::variant<StmtExit*, StmtAssign*, StmtDeclar*, StmtIf*, Scope*> Stmt;
 };
 
 struct Scope : ASTNode {
-    std::vector<Statement*> statements;
+    std::vector<Statement*> Statements;
 };
 
 struct Program : ASTNode {
-    std::vector<Statement*> statements;
+    std::vector<Statement*> Statements;
 };
 
 class Parser {
@@ -77,32 +83,32 @@ class Parser {
     Program* ParseProgram();
 
   private:
-    Term* parseTerm();
-    Expression* parseExpression(int minPrecedence = 0);
-    Statement* parseStatement();
-    Scope* parseScope();
+    Term* ParseTerm();
+    Expression* ParseExpression(int minPrecedence = 0);
+    Statement* ParseStatement();
+    Scope* ParseScope();
 
-    const Token& peek(int offset = 0) const {
+    const Token& Peek(int offset = 0) const {
         return m_Tokens[m_Index + offset]; // always safe because EOF exists
     }
 
-    const Token& consume() { return m_Tokens[m_Index++]; }
+    const Token& Consume() { return m_Tokens[m_Index++]; }
 
     template <typename... Args>
-    const Token* match(TokenType first, Args... rest) {
-        const Token& tok = peek();
-        if (((tok.type == first) || ... || (tok.type == rest))) {
-            return &consume();
+    const Token* Match(TokenType first, Args... rest) {
+        const Token& tok = Peek();
+        if (((tok.Type == first) || ... || (tok.Type == rest))) {
+            return &Consume();
         }
         return nullptr;
     }
 
-    Token expect(TokenType type) {
-        const Token& tok = peek();
-        if (tok.type != type) {
-            Error(tok.location, std::format("Expected '{}'", ToStr(type)));
+    Token Expect(TokenType type) {
+        const Token& tok = Peek();
+        if (tok.Type != type) {
+            Error(tok.Location, std::format("Expected '{}'", ToStr(type)));
         }
-        return consume();
+        return Consume();
     }
 
     std::optional<int> GetPrecedence(TokenType type) {
@@ -123,4 +129,4 @@ class Parser {
     size_t m_Index = 0;
 };
 
-} // namespace Glassy
+} // namespace Compiler

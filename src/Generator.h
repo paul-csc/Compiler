@@ -3,7 +3,7 @@
 #include "pch.h"
 #include "Parser.h"
 
-namespace Glassy {
+namespace Compiler {
 
 struct Generator {
   public:
@@ -12,7 +12,7 @@ struct Generator {
 
   private:
     struct Variable {
-        size_t stackLocation;
+        size_t StackLocation;
     };
 
     template <typename... Ts>
@@ -23,23 +23,24 @@ struct Generator {
     template <typename... Ts>
     overloaded(Ts...) -> overloaded<Ts...>;
 
-    void generateTerm(const Term* term);
-    void generateExpression(const Expression* expr);
-    void generateStatement(const Statement* stmt);
+    void GenerateTerm(const Term* term);
+    void GenerateExpression(const Expression* expr);
+    void GenerateScope(const Scope* expr);
+    void GenerateStatement(const Statement* stmt);
 
-    void push(const std::string& reg) {
+    void Push(const std::string& reg) {
         m_Output += "push " + reg + "\n";
         m_StackSize++;
     }
 
-    void pop(const std::string& reg) {
+    void Pop(const std::string& reg) {
         m_Output += "pop " + reg + "\n";
         m_StackSize--;
     }
 
-    void beginScope() { m_Scopes.emplace_back(); }
+    void BeginScope() { m_Scopes.emplace_back(); }
 
-    void endScope() {
+    void EndScope() {
         const size_t popCount = m_Scopes.back().size();
         if (popCount != 0) {
             m_Output += "add rsp, " + std::to_string(popCount * 8) + "\n";
@@ -48,7 +49,7 @@ struct Generator {
         m_Scopes.pop_back();
     }
 
-    Variable* lookup(const std::string& name) {
+    Variable* Lookup(const std::string& name) {
         for (auto it = m_Scopes.rbegin(); it != m_Scopes.rend(); ++it) {
             auto found = it->find(name);
             if (found != it->end()) {
@@ -58,14 +59,20 @@ struct Generator {
         return nullptr;
     }
 
+    std::string CreateLabel() {
+        return "label" + std::to_string(m_LabelCount++);
+    }
+
     const Program* m_Program;
     std::string m_Output;
     bool m_HasExit = false;
     size_t m_StackSize = 0;
+
+    int m_LabelCount = 0;
 
     // std::unordered_map<std::string, Variable> m_Variables;
 
     std::vector<std::unordered_map<std::string, Variable>> m_Scopes;
 };
 
-} // namespace Glassy
+} // namespace Compiler

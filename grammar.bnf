@@ -1,0 +1,36 @@
+
+program:
+    declaration*
+
+declaration:
+    declarationSpecifier initDeclarator ';'
+
+declarationSpecifier:
+    typeSpecifier
+
+typeSpecifier:
+    'int'
+
+initDeclarator:
+    declarator ('=' initializer)?
+
+declarator:
+    IDENTIFIER
+    '(' declarator ')'
+
+initializer:
+    assignmentExpression
+   
+conditionalExpression:
+    additiveExpression
+
+additiveExpression:
+    multiplicativeExpression (('+' | '-') multiplicativeExpression)*
+
+multiplicativeExpression:
+    primaryExpression (('*' | '/' | '%') primaryExpression)*
+
+primaryExpression:
+    IDENTIFIER
+    CONSTANT
+    '(' expression ')'
