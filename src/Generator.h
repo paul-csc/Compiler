@@ -23,9 +23,11 @@ struct Generator {
     template <typename... Ts>
     overloaded(Ts...) -> overloaded<Ts...>;
 
+    void GenerateFactor(const Factor* factor);
     void GenerateTerm(const Term* term);
     void GenerateExpression(const Expression* expr);
-    void GenerateScope(const Scope* expr);
+    void GenerateBlockItem(const BlockItem* expr);
+    void GenerateBlock(const Block* expr);
     void GenerateStatement(const Statement* stmt);
 
     void Push(const std::string& reg) {
@@ -59,13 +61,10 @@ struct Generator {
         return nullptr;
     }
 
-    std::string CreateLabel() {
-        return "label" + std::to_string(m_LabelCount++);
-    }
+    std::string CreateLabel() { return "label" + std::to_string(m_LabelCount++); }
 
     const Program* m_Program;
     std::string m_Output;
-    bool m_HasExit = false;
     size_t m_StackSize = 0;
 
     int m_LabelCount = 0;

@@ -1,4 +1,4 @@
-workspace "Chess"
+workspace "Compiler"
     architecture "x64"
     location "."
 
@@ -8,7 +8,7 @@ workspace "Chess"
         "Release"
     }
 
-project "Chess"
+project "Compiler"
     language "C++"
     cppdialect "C++20"
     kind "ConsoleApp"
@@ -16,6 +16,9 @@ project "Chess"
 
     pchheader "pch.h"
     pchsource "src/pch.cpp"
+    filter "toolset:gcc or toolset:clang"
+        pchsource ""
+    filter {}
 
     files
     {
@@ -25,14 +28,21 @@ project "Chess"
     }
 
     includedirs { "src" }
-    
+
+    filter "toolset:gcc or toolset:clang"
+        buildoptions {
+            "-Winvalid-pch",
+            "-H"
+        }
+    filter {}
+
     filter "configurations:Debug"
-        defines { "DEBUG" }
+        defines { "DEBUG", "_DEBUG" }
         runtime "Debug"
         symbols "On"
 
     filter "configurations:Release"
-        defines { "RELEASE" }
+        defines { "RELEASE", "NDEBUG" }
         runtime "Release"
         optimize "On"
         symbols "Off"

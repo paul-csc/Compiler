@@ -8,108 +8,97 @@ Parser::Parser(const std::vector<Token>& tokens)
 
 Program* Parser::ParseProgram() {
     m_Index = 0;
-    Program* program = m_Allocator.alloc<Program>();
-
-    while (Peek().Type != END_OF_FILE) {
-        program->Statements.push_back(ParseStatement());
-    }
-
-    return program;
+    return m_Allocator.alloc<Program>(ParseBlock());
 }
 
-Term* Parser::ParseTerm() {
+Factor* Parser::ParseFactor() {
     const Token& tok = Peek();
+
     if (tok.Type == END_OF_FILE) {
         Error(m_Tokens.back().Location, "Expected term");
-    }
-
-    if (auto t = Match(LITERAL)) {
-        TermLiteral* term = m_Allocator.alloc<TermLiteral>(*t->Value);
-        return m_Allocator.alloc<Term>(term);
-    } else if (auto t = Match(IDENTIFIER)) {
-        TermIdentifier* term = m_Allocator.alloc<TermIdentifier>(*t->Value);
-        return m_Allocator.alloc<Term>(term);
-    }
-
-    if (Match(L_PAREN)) {
+    } else if (auto t = Match(LITERAL, IDENTIFIER)) {
+        return m_Allocator.alloc<Factor>(std::stoi(*t->Value));
+    } else if (Match(IDENTIFIER)) {
+        return m_Allocator.alloc<Factor>(*t->Value);
+    } else if (Match(LPAREN)) {
         Expression* expr = ParseExpression();
-        Expect(R_PAREN);
-        TermParen* term = m_Allocator.alloc<TermParen>(expr);
-        return m_Allocator.alloc<Term>(term);
+        Expect(RPAREN);
+        return m_Allocator.alloc<Factor>(expr);
     }
 
     Error(tok.Location, "Unexpected token in term");
     return nullptr; // never reached
 }
 
-Expression* Parser::ParseExpression(int minPrecedence) {
-    Expression* left = m_Allocator.alloc<Expression>(ParseTerm());
+Term* Parser::ParseTerm() {
+    Term* term = m_Allocator.alloc<Term>(ParseFactor());
 
-    while (true) {
-        const Token& opTok = Peek();
-
-        auto prec = GetPrecedence(opTok.Type);
-        if (!prec || *prec < minPrecedence) {
-            break;
-        }
-        Consume();
-
-        Expression* right = ParseExpression(*prec + 1);
-        ExprBinary* bin = m_Allocator.alloc<ExprBinary>(ToStr(opTok.Type)[0], left, right);
-        left = m_Allocator.alloc<Expression>(bin);
+    while (auto op = Match(STAR, FSLASH)) {
+        Factor* right = ParseFactor();
+        term->Right.emplace_back(TokenToStr(op->Type), right);
     }
 
-    return left;
+    return term;
+}
+
+Expression* Parser::ParseExpression() {
+    Term* left = ParseTerm();
+    Expression* term = m_Allocator.alloc<Expression>(left);
+
+    while (auto op = Match(PLUS, MINUS)) {
+        Term* right = ParseTerm();
+        term->Right.emplace_back(TokenToStr(op->Type), right);
+    }
+
+    return term;
+}
+
+Declaration* Parser::ParseDeclaration() {
+    Expect(INT);
+    std::string_view name = *Expect(IDENTIFIER).Value;
+    Expect(SEMICOLON);
+    return m_Allocator.alloc<Declaration>(name);
 }
 
 Statement* Parser::ParseStatement() {
-    if (Match(EXIT)) {
-        Expression* expr = ParseExpression();
-        Expect(SEMI);
-
-        StmtExit* stmt = m_Allocator.alloc<StmtExit>(expr);
-        return m_Allocator.alloc<Statement>(stmt);
-    } else if (Match(VAR)) {
-        std::string name = *Expect(IDENTIFIER).Value;
-
+    if (auto id = Match(IDENTIFIER)) {
+        std::string_view name = *id->Value;
         Expect(EQUAL);
         Expression* expr = ParseExpression();
-        Expect(SEMI);
+        Expect(SEMICOLON);
 
-        StmtDeclar* stmt = m_Allocator.alloc<StmtDeclar>(name, expr);
+        AssignmentStatement* stmt = m_Allocator.alloc<AssignmentStatement>(name, expr);
         return m_Allocator.alloc<Statement>(stmt);
     } else if (Match(IF)) {
-        Expect(L_PAREN);        
+        Expect(LPAREN);
         Expression* expr = ParseExpression();
-        Expect(R_PAREN);
-        Expect(L_BRACE);
-        Scope* scope = ParseScope();
+        Expect(RPAREN);
+        Expect(LBRACE);
 
-        StmtIf* stmt = m_Allocator.alloc<StmtIf>(expr, scope);
+        IfStatement* stmt = m_Allocator.alloc<IfStatement>(expr, ParseStatement());
         return m_Allocator.alloc<Statement>(stmt);
-    } else if (Match(L_BRACE)) {
-        Scope* scope = ParseScope();
-        return m_Allocator.alloc<Statement>(scope);
-    } else if (Match(R_BRACE)) {
-        return nullptr; // special tag for scope end
+    } else if (Match(LBRACE)) {
+        return m_Allocator.alloc<Statement>(ParseBlock());
     }
 
-    std::string name = *Expect(IDENTIFIER).Value;
-
-    Expect(EQUAL);
-    Expression* expr = ParseExpression();
-    Expect(SEMI);
-
-    StmtAssign* stmt = m_Allocator.alloc<StmtAssign>(name, expr);
-    return m_Allocator.alloc<Statement>(stmt);
+    Error("Expected statement");
+    return nullptr;
 }
 
-Scope* Parser::ParseScope() {
-    Scope* scope = m_Allocator.alloc<Scope>();
-    while (Statement* stmt = ParseStatement()) {
-        scope->Statements.push_back(stmt);
+Block* Parser::ParseBlock() {
+    Block* block = m_Allocator.alloc<Block>();
+    Expect(LBRACE);
+    while (Peek().Type != RBRACE && Peek().Type != END_OF_FILE) {
+        BlockItem* item;
+        if (Peek().Type == INT) {
+            item = m_Allocator.alloc<BlockItem>(ParseDeclaration());
+        } else {
+            item = m_Allocator.alloc<BlockItem>(ParseStatement());
+        }
+        block->Items.emplace_back(item);
     }
-    return scope;
+    Expect(RBRACE);
+    return block;
 }
 
 } // namespace Compiler

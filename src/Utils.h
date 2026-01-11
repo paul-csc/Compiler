@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pch.h"
+#include "Lexer.h"
 
 namespace Compiler {
 
@@ -33,5 +34,17 @@ class ArenaAllocator {
     std::byte* m_Buffer;
     std::byte* m_Offset;
 };
+
+inline void Error(SourceLocation loc, const std::string& msg) {
+    std::cerr << std::format("{} [Ln {}, Col {}]\n", msg, loc.Line, loc.Column);  
+    std::cin.get();
+    std::exit(1);
+}
+
+inline void Error(const std::string& msg) {
+    std::cerr << msg << "\n";
+    std::cin.get();
+    std::exit(1);
+}
 
 } // namespace Compiler

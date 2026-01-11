@@ -1,81 +1,11 @@
 #pragma once
 
 #include "pch.h"
-#include "Arena.h"
-#include "Tokenizer.h"
+#include "AST.h"
+#include "Lexer.h"
+#include "Utils.h"
 
 namespace Compiler {
-
-struct Expression;
-struct Scope;
-
-struct ASTNode {
-    ASTNode() = default;
-    virtual ~ASTNode() = default;
-    ASTNode(const ASTNode&) = delete;
-    ASTNode& operator=(const ASTNode&) = delete;
-};
-
-struct TermLiteral : ASTNode {
-    explicit TermLiteral(std::string_view l) : Literal(l) {}
-    std::string Literal;
-};
-struct TermIdentifier : ASTNode {
-    explicit TermIdentifier(std::string_view ident) : Identifier(ident) {}
-    std::string Identifier;
-};
-struct TermParen : ASTNode {
-    explicit TermParen(Expression* expr) : Expr(expr) {}
-    Expression* Expr;
-};
-struct Term : ASTNode {
-    explicit Term(std::variant<TermLiteral*, TermIdentifier*, TermParen*> term) : Term(term) {}
-    std::variant<TermLiteral*, TermIdentifier*, TermParen*> Term;
-};
-
-struct ExprBinary : ASTNode {
-    ExprBinary(char ch, Expression* lhs, Expression* rhs) : Op(ch), Left(lhs), Right(rhs) {}
-    char Op;
-    Expression* Left;
-    Expression* Right;
-};
-struct Expression : ASTNode {
-    explicit Expression(std::variant<ExprBinary*, Term*> expr) : Expr(expr) {}
-    std::variant<ExprBinary*, Term*> Expr;
-};
-
-struct StmtExit : ASTNode {
-    StmtExit(Expression* e) : Expr(e) {}
-    Expression* Expr;
-};
-struct StmtAssign : ASTNode {
-    StmtAssign(std::string_view name, Expression* expr) : identifier(name), expr(expr) {}
-    std::string identifier;
-    Expression* expr;
-};
-struct StmtDeclar : ASTNode {
-    StmtDeclar(std::string_view name, Expression* expr) : Identifier(name), Expr(expr) {}
-    std::string Identifier;
-    Expression* Expr;
-};
-struct StmtIf : ASTNode {
-    StmtIf(Expression* cond, Scope* s) : Cond(cond), Scope(s) {}
-    Expression* Cond;
-    Scope* Scope;
-};
-struct Statement : ASTNode {
-    explicit Statement(std::variant<StmtExit*, StmtAssign*, StmtDeclar*, StmtIf*, Scope*> stmt)
-        : Stmt(stmt) {}
-    std::variant<StmtExit*, StmtAssign*, StmtDeclar*, StmtIf*, Scope*> Stmt;
-};
-
-struct Scope : ASTNode {
-    std::vector<Statement*> Statements;
-};
-
-struct Program : ASTNode {
-    std::vector<Statement*> Statements;
-};
 
 class Parser {
   public:
@@ -83,14 +13,14 @@ class Parser {
     Program* ParseProgram();
 
   private:
+    Factor* ParseFactor();
     Term* ParseTerm();
-    Expression* ParseExpression(int minPrecedence = 0);
+    Expression* ParseExpression();
+    Declaration* ParseDeclaration();
     Statement* ParseStatement();
-    Scope* ParseScope();
+    Block* ParseBlock();
 
-    const Token& Peek(int offset = 0) const {
-        return m_Tokens[m_Index + offset]; // always safe because EOF exists
-    }
+    const Token& Peek(int offset = 0) const { return m_Tokens[m_Index + offset]; }
 
     const Token& Consume() { return m_Tokens[m_Index++]; }
 
@@ -106,21 +36,9 @@ class Parser {
     Token Expect(TokenType type) {
         const Token& tok = Peek();
         if (tok.Type != type) {
-            Error(tok.Location, std::format("Expected '{}'", ToStr(type)));
+            Error(tok.Location, std::format("Expected '{}'", TokenToStr(type)));
         }
         return Consume();
-    }
-
-    std::optional<int> GetPrecedence(TokenType type) {
-        switch (type) {
-            case PLUS:
-            case MINUS: return 0;
-
-            case STAR:
-            case F_SLASH: return 1;
-
-            default: return {};
-        }
     }
 
     ArenaAllocator m_Allocator;

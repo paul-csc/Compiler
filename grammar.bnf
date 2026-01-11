@@ -1,36 +1,45 @@
 
-program:
-    declaration*
+program
+    : block
+    ;
 
-declaration:
-    declarationSpecifier initDeclarator ';'
+block
+    : '{' blockItem* '}'
+    ;
 
-declarationSpecifier:
-    typeSpecifier
+blockItem
+    : declaration
+    | statement
+    ;
 
-typeSpecifier:
-    'int'
+declaration
+    : 'int' IDENTIFIER ';' # for now
+    ;
 
-initDeclarator:
-    declarator ('=' initializer)?
+statement
+    : assignmentStatement
+    | ifStatement
+    | block
+    ;
 
-declarator:
-    IDENTIFIER
-    '(' declarator ')'
+assignmentStatement
+    : IDENTIFIER '=' expression ';'
+    ;
 
-initializer:
-    assignmentExpression
-   
-conditionalExpression:
-    additiveExpression
+ifStatement
+    : 'if' '(' expression ')' statement ('else' statement)?
+    ;
 
-additiveExpression:
-    multiplicativeExpression (('+' | '-') multiplicativeExpression)*
+expression
+    : term (('+' | '-') term)*
+    ;
 
-multiplicativeExpression:
-    primaryExpression (('*' | '/' | '%') primaryExpression)*
+term
+    : factor (('*' | '/') factor)*
+    ;
 
-primaryExpression:
-    IDENTIFIER
-    CONSTANT
-    '(' expression ')'
+factor
+    : '(' expression ')'
+    | IDENTIFIER
+    | NUMBER
+    ;

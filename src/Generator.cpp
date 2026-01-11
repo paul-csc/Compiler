@@ -7,122 +7,112 @@ Generator::Generator(Program* prog) : m_Program(prog) {}
 
 std::string Generator::GenerateAsm() {
     m_StackSize = 0;
-    m_HasExit = false;
-
-    BeginScope(); // global scope
 
     m_Output += "global _start\nsection .text\n_start:\n";
-
-    for (const auto& stmt : m_Program->Statements) {
-        GenerateStatement(stmt);
-    }
-
-    if (!m_HasExit) {
-        EndScope();
-        m_Output += "mov rax, 60\nxor rdi, rdi\nsyscall\n";
-    }
+    GenerateBlock(m_Program->GlobalBlock);
+    m_Output += "mov rax, 60\nxor rdi, rdi\nsyscall\n";
 
     return m_Output;
 }
 
-// clang-format off
+void Generator::GenerateFactor(const Factor* factor) {
+    std::visit(overloaded{ [&](int i) {
+                              m_Output += "mov rax, " + std::to_string(i) + "\n";
+                              Push("rax");
+                          },
+                   [&](const std::string& s) {
+                       const Variable* v = Lookup(s);
+
+                       if (!v) {
+                           Error("Undeclared variable '" + s + "'");
+                       }
+                       Push("QWORD [rsp + " + std::to_string((m_StackSize - v->StackLocation - 1) * 8) + "]");
+                   },
+                   [&](const Expression* expr) { GenerateExpression(expr); } },
+        factor->Value);
+}
+
 void Generator::GenerateTerm(const Term* term) {
-    std::visit(overloaded{
-        [&](const TermIdentifier* termIdent) {
-            const Variable* v = Lookup(termIdent->Identifier);
-            
-            if (!v) {
-                Error("Undeclared variable '" + termIdent->Identifier + "'");
-            }
-            Push("QWORD [rsp + " + std::to_string((m_StackSize - v->StackLocation - 1) * 8) + "]");
-        },
-        [&](const TermLiteral* termLiteral) {
-            m_Output += "mov rax, " + termLiteral->Literal + "\n";
-            Push("rax");
-        },
-        [&](const TermParen* termParen) {
-            GenerateExpression(termParen->Expr);
+    GenerateFactor(term->Left);
+    for (const auto& [op, right] : term->Right) {
+        GenerateFactor(right);
+        Pop("rax");
+        Pop("rbx");
+
+        if (op == "*") {
+            m_Output += "mul rbx\n";
+        } else if (op == "/") {
+            m_Output += "div rbx\n";
+        } else {
+            Error(std::format("Unknow operator '{}'", op));
         }
-    }, term->Term);
+        Push("rax");
+    }
 }
 
 void Generator::GenerateExpression(const Expression* expr) {
-    std::visit(overloaded{
-        [&](const Term* term) {
-            GenerateTerm(term);
-        },
-        [&](const ExprBinary* exprBinary) {
-            GenerateExpression(exprBinary->Right);
-            GenerateExpression(exprBinary->Left);
-            Pop("rax");
-            Pop("rbx");
-
-            switch (exprBinary->Op) {
-                case '+': m_Output += "add rax, rbx\n"; break;
-                case '-': m_Output += "sub rax, rbx\n"; break;
-                case '*': m_Output += "mul rbx\n"; break;
-                case '/': m_Output += "div rbx\n"; break;
-                default: Error(std::format("Unknow operator '{}'", exprBinary->Op)); break;
-            }
-
-            Push("rax");
+    GenerateTerm(expr->Left);
+    for (const auto& [op, right] : expr->Right) {
+        GenerateTerm(right);
+        Pop("rax");
+        Pop("rbx");
+        
+        if (op == "+") {
+            m_Output += "add rax, rbx\n";
+        } else if (op == "-") {
+            m_Output += "sub rax, rbx\n";
+        } else {
+            Error(std::format("Unknow operator '{}'", op));
         }
-    }, expr->Expr);
+
+        Push("rax");
+    }
 }
 
-void Generator::GenerateScope(const Scope* scope) {   
+void Generator::GenerateBlockItem(const BlockItem* blockItem) {
+    std::visit(overloaded{ [&](const Statement* stmt) { GenerateStatement(stmt); },
+                   [&](const Declaration* decl) {
+                       auto& scope = m_Scopes.back();
+
+                       if (scope.contains(decl->Ident)) {
+                           Error("Redefinition of identifier: " + decl->Ident);
+                       }
+                       scope.emplace(decl->Ident, Variable{ m_StackSize - 1 });
+                   } },
+        blockItem->Item);
+}
+
+void Generator::GenerateBlock(const Block* scope) {
     BeginScope();
-    for (const auto& stmt : scope->Statements) {
-        GenerateStatement(stmt);
+    for (const auto& item : scope->Items) {
+        GenerateBlockItem(item);
     }
     EndScope();
 }
 
 void Generator::GenerateStatement(const Statement* stmt) {
-    std::visit(overloaded{
-        [&](const StmtExit* stmtExit) {
-            GenerateExpression(stmtExit->Expr);
-            EndScope();
-            m_Output += "mov rax, 60\n";
-            Pop("rdi");
-            m_Output += "syscall\n";
+    std::visit(overloaded{ [&](const AssignmentStatement* assignStmt) {
+                              const Variable* v = Lookup(assignStmt->Ident);
 
-            m_HasExit = true;
-        },
-        [&](const StmtDeclar* stmtDeclar) {
-            auto& scope = m_Scopes.back();
-
-            if (scope.contains(stmtDeclar->Identifier)) {
-                Error("Redefinition of identifier: " + stmtDeclar->Identifier);
-            }
-            GenerateExpression(stmtDeclar->Expr);
-            scope.emplace(stmtDeclar->Identifier, Variable{ m_StackSize - 1  });
-        },
-        [&](const StmtAssign* stmtAssign) {
-            const Variable* v = Lookup(stmtAssign->identifier);
-
-            if (!v) {
-                Error("Undeclared identifier: " + stmtAssign->identifier);
-            }
-            GenerateExpression(stmtAssign->expr);
-            Pop("rax");
-            m_Output +=
-                "mov [rsp + " + std::to_string((m_StackSize - v->StackLocation - 1) * 8) + "], rax\n";
-        },
-        [&](const StmtIf* stmtIf) {
-            GenerateExpression(stmtIf->Cond);
-            Pop("rax");
-            const std::string label = CreateLabel();
-            m_Output += "test rax, rax\n";
-            m_Output += "jz " + label + "\n";
-            GenerateScope(stmtIf->Scope);
-            m_Output += label + ":\n";
-        },
-        [&](const Scope* scope) {
-            GenerateScope(scope);
-        }
-    }, stmt->Stmt);
+                              if (!v) {
+                                  Error("Undeclared identifier: " + assignStmt->Ident);
+                              }
+                              GenerateExpression(assignStmt->Expr);
+                              Pop("rax");
+                              m_Output += "mov [rsp + " +
+                                  std::to_string((m_StackSize - v->StackLocation - 1) * 8) + "], rax\n";
+                          },
+                   [&](const IfStatement* ifStmt) {
+                       GenerateExpression(ifStmt->Cond);
+                       Pop("rax");
+                       const std::string label = CreateLabel();
+                       m_Output += "test rax, rax\n";
+                       m_Output += "jz " + label + "\n";
+                       GenerateStatement(ifStmt->Then);
+                       m_Output += label + ":\n";
+                   },
+                   [&](const Block* scope) { GenerateBlock(scope); } },
+        stmt->Stmt);
 }
-// clang-format on
 
 } // namespace Compiler

@@ -13,17 +13,17 @@ enum TokenType {
     IF,
     ELSE,
 
-    L_PAREN,
-    R_PAREN,
-    L_BRACE,
-    R_BRACE,
+    LPAREN,
+    RPAREN,
+    LBRACE,
+    RBRACE,
     SEMICOLON,
     COMMA,
 
     PLUS,
     MINUS,
     STAR,
-    F_SLASH,
+    FSLASH,
     PERCENT,
     CARET,
     EQUAL,
@@ -38,11 +38,11 @@ struct SourceLocation {
     uint16_t Column = 1;
 };
 
-constexpr std::array<std::string_view, TOKEN_TYPE_NB> TokenToStr = { "identifier", "literal", "return", "int",
+constexpr std::array<std::string_view, TOKEN_TYPE_NB> TokenNames = { "identifier", "literal", "return", "int",
     "if", "else", "(", ")", "{", "}", ";", ",", "+", "-", "*", "/", "%", "^", "=", "eof" };
 
-constexpr std::string_view ToStr(TokenType type) {
-    return TokenToStr.at(type);
+constexpr std::string_view TokenToStr(TokenType type) {
+    return TokenNames.at(type);
 }
 
 struct Token {
@@ -54,13 +54,6 @@ struct Token {
     std::optional<std::string> Value = std::nullopt; // literal or identifier
 };
 
-namespace Lexer {
-
 std::vector<Token> Lex(std::string_view src);
-
-} // namespace Lexer
-
-void Error(SourceLocation loc, const std::string& msg);
-void Error(const std::string& msg);
 
 } // namespace Compiler

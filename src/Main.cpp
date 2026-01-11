@@ -1,42 +1,29 @@
 #include "pch.h"
 #include "Generator.h"
+#include "Lexer.h"
 #include "Parser.h"
-#include "Tokenizer.h"
 
-int main(int argc, char** argv) {
-    // if (argc != 2) {
-    //     Compiler::Error("Usage: <program> <source_file>.txt");
-    // }
+int main(int argc, const char* argv[]) {
+    std::filesystem::path inputFilePath = "test/Main.c";
+    std::filesystem::path outputFilePath = "test/Main.asm";
 
-    std::filesystem::path inputFilePath /*= argv[1]*/;
-
-    inputFilePath = "test"; // for debug
-
-    if (inputFilePath.has_extension()) {
-        if (inputFilePath.extension() != ".txt") {
-            Compiler::Error(inputFilePath.string() + " is not a Compiler source file");
-        }
-    } else {
-        inputFilePath.replace_extension(".txt");
-    }
-
-    std::filesystem::path outputFilePath = inputFilePath;
-    outputFilePath.replace_extension(".asm");
-
-    std::ifstream inputFile(inputFilePath, std::ios::in | std::ios::binary);
+    std::ifstream inputFile(inputFilePath, std::ios::in);
     if (!inputFile) {
         Compiler::Error("Failed to open file: " + inputFilePath.string());
     }
 
     std::string sourceCode((std::istreambuf_iterator<char>(inputFile)), std::istreambuf_iterator<char>());
-    sourceCode += '\n'; // ensure last line ends with newline
+    sourceCode += '\n';
     inputFile.close();
 
-    // tokenize, parse, and generate assembly
-    Compiler::Parser parser(Compiler::Tokenizer::Tokenize(sourceCode));
+    const auto tokens = Compiler::Lex(sourceCode);
+    for (int i = 0; i < tokens.size(); ++i) {
+        std::cout << std::format("{}: {}\n", i + 1, Compiler::TokenToStr(tokens[i].Type));
+    }
+
+    Compiler::Parser parser(tokens);
     Compiler::Generator generator(parser.ParseProgram());
 
-    // write output file
     std::ofstream outputFile(outputFilePath);
     if (!outputFile) {
         Compiler::Error("Failed to write to file: " + outputFilePath.string());

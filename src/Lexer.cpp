@@ -1,9 +1,10 @@
 #include "pch.h"
 #include "Lexer.h"
+#include "Utils.h"
 
 namespace Compiler {
 
-std::vector<Token> Lexer::Lex(std::string_view src) {
+std::vector<Token> Lex(std::string_view src) {
     const size_t size = src.size();
 
     std::vector<Token> tokens;
@@ -35,11 +36,11 @@ std::vector<Token> Lexer::Lex(std::string_view src) {
 
             std::string_view lexeme(src.data() + start, i - start);
 
-            if (lexeme == ToStr(RETURN)) {
+            if (lexeme == TokenToStr(RETURN)) {
                 tokens.emplace_back(RETURN, startLoc);
-            } else if (lexeme == ToStr(INT)) {
+            } else if (lexeme == TokenToStr(INT)) {
                 tokens.emplace_back(INT, startLoc);
-            } else if (lexeme == ToStr(IF)) {
+            } else if (lexeme == TokenToStr(IF)) {
                 tokens.emplace_back(IF, startLoc);
             } else {
                 tokens.emplace_back(IDENTIFIER, startLoc, lexeme);
@@ -63,16 +64,16 @@ std::vector<Token> Lexer::Lex(std::string_view src) {
             case '+': tokens.emplace_back(PLUS, startLoc); break;
             case '-': tokens.emplace_back(MINUS, startLoc); break;
             case '*': tokens.emplace_back(STAR, startLoc); break;
-            case '/': tokens.emplace_back(F_SLASH, startLoc); break;
+            case '/': tokens.emplace_back(FSLASH, startLoc); break;
             case '%': tokens.emplace_back(PERCENT, startLoc); break;
             case '^': tokens.emplace_back(CARET, startLoc); break;
             case '=': tokens.emplace_back(EQUAL, startLoc); break;
 
             // separators
-            case '(': tokens.emplace_back(L_PAREN, startLoc); break;
-            case ')': tokens.emplace_back(R_PAREN, startLoc); break;
-            case '{': tokens.emplace_back(L_BRACE, startLoc); break;
-            case '}': tokens.emplace_back(R_BRACE, startLoc); break;
+            case '(': tokens.emplace_back(LPAREN, startLoc); break;
+            case ')': tokens.emplace_back(RPAREN, startLoc); break;
+            case '{': tokens.emplace_back(LBRACE, startLoc); break;
+            case '}': tokens.emplace_back(RBRACE, startLoc); break;
             case ';': tokens.emplace_back(SEMICOLON, startLoc); break;
             case ',': tokens.emplace_back(COMMA, startLoc); break;
 
@@ -93,16 +94,6 @@ std::vector<Token> Lexer::Lex(std::string_view src) {
     tokens.emplace_back(END_OF_FILE, loc);
 
     return tokens;
-}
-
-void Error(SourceLocation loc, const std::string& msg) {
-    Error(std::format("{} [Ln {}, Col {}]", msg, loc.Line, loc.Column));
-}
-
-void Error(const std::string& msg) {
-    std::cerr << msg << "\n";
-    std::cin.get();
-    std::exit(1);
 }
 
 } // namespace Compiler
