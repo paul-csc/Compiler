@@ -12,7 +12,7 @@ struct Generator {
 
   private:
     struct Variable {
-        size_t StackLocation;
+        int64_t StackLocation;
     };
 
     template <typename... Ts>
@@ -24,9 +24,8 @@ struct Generator {
     overloaded(Ts...) -> overloaded<Ts...>;
 
     void GenerateFactor(const Factor* factor);
-    void GenerateTerm(const Term* term);
-    void GenerateExpression(const Expression* expr);
-    void GenerateBlockItem(const BlockItem* expr);
+    void GenerateMultiplicativeExpression(const MultiplicativeExpression* expr);
+    void GenerateExpression(const AdditiveExpression* expr);
     void GenerateBlock(const Block* expr);
     void GenerateStatement(const Statement* stmt);
 
@@ -36,6 +35,9 @@ struct Generator {
     }
 
     void Pop(const std::string& reg) {
+        if (m_StackSize <= 0) {
+            Error("Stack underflow");
+        }
         m_Output += "pop " + reg + "\n";
         m_StackSize--;
     }
@@ -43,7 +45,7 @@ struct Generator {
     void BeginScope() { m_Scopes.emplace_back(); }
 
     void EndScope() {
-        const size_t popCount = m_Scopes.back().size();
+        const int64_t popCount = m_Scopes.back().size();
         if (popCount != 0) {
             m_Output += "add rsp, " + std::to_string(popCount * 8) + "\n";
         }
@@ -65,7 +67,7 @@ struct Generator {
 
     const Program* m_Program;
     std::string m_Output;
-    size_t m_StackSize = 0;
+    int64_t m_StackSize = 0;
 
     int m_LabelCount = 0;
 

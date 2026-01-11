@@ -8,7 +8,7 @@ Generator::Generator(Program* prog) : m_Program(prog) {}
 std::string Generator::GenerateAsm() {
     m_StackSize = 0;
 
-    m_Output += "global _start\nsection .text\n_start:\n";
+    m_Output += "global _start\nsection .text\nextern print\n_start:\n";
     GenerateBlock(m_Program->GlobalBlock);
     m_Output += "mov rax, 60\nxor rdi, rdi\nsyscall\n";
 
@@ -28,13 +28,13 @@ void Generator::GenerateFactor(const Factor* factor) {
                        }
                        Push("QWORD [rsp + " + std::to_string((m_StackSize - v->StackLocation - 1) * 8) + "]");
                    },
-                   [&](const Expression* expr) { GenerateExpression(expr); } },
+                   [&](const AdditiveExpression* expr) { GenerateExpression(expr); } },
         factor->Value);
 }
 
-void Generator::GenerateTerm(const Term* term) {
-    GenerateFactor(term->Left);
-    for (const auto& [op, right] : term->Right) {
+void Generator::GenerateMultiplicativeExpression(const MultiplicativeExpression* expr) {
+    GenerateFactor(expr->Left);
+    for (const auto& [op, right] : expr->Right) {
         GenerateFactor(right);
         Pop("rax");
         Pop("rbx");
@@ -42,6 +42,7 @@ void Generator::GenerateTerm(const Term* term) {
         if (op == "*") {
             m_Output += "mul rbx\n";
         } else if (op == "/") {
+            m_Output += "xor rdx, rdx\n";
             m_Output += "div rbx\n";
         } else {
             Error(std::format("Unknow operator '{}'", op));
@@ -50,13 +51,13 @@ void Generator::GenerateTerm(const Term* term) {
     }
 }
 
-void Generator::GenerateExpression(const Expression* expr) {
-    GenerateTerm(expr->Left);
+void Generator::GenerateExpression(const AdditiveExpression* expr) {
+    GenerateMultiplicativeExpression(expr->Left);
     for (const auto& [op, right] : expr->Right) {
-        GenerateTerm(right);
+        GenerateMultiplicativeExpression(right);
         Pop("rax");
         Pop("rbx");
-        
+
         if (op == "+") {
             m_Output += "add rax, rbx\n";
         } else if (op == "-") {
@@ -69,23 +70,19 @@ void Generator::GenerateExpression(const Expression* expr) {
     }
 }
 
-void Generator::GenerateBlockItem(const BlockItem* blockItem) {
-    std::visit(overloaded{ [&](const Statement* stmt) { GenerateStatement(stmt); },
-                   [&](const Declaration* decl) {
-                       auto& scope = m_Scopes.back();
-
-                       if (scope.contains(decl->Ident)) {
-                           Error("Redefinition of identifier: " + decl->Ident);
-                       }
-                       scope.emplace(decl->Ident, Variable{ m_StackSize - 1 });
-                   } },
-        blockItem->Item);
-}
-
 void Generator::GenerateBlock(const Block* scope) {
     BeginScope();
     for (const auto& item : scope->Items) {
-        GenerateBlockItem(item);
+        std::visit(overloaded{ [&](const Statement* stmt) { GenerateStatement(stmt); },
+                       [&](const Declaration* decl) {
+                           auto& scope = m_Scopes.back();
+
+                           if (scope.contains(decl->Ident)) {
+                               Error("Redefinition of identifier: " + decl->Ident);
+                           }
+                           scope.emplace(decl->Ident, Variable{ m_StackSize - 1 });
+                       } },
+            item->Item);
     }
     EndScope();
 }
@@ -102,14 +99,54 @@ void Generator::GenerateStatement(const Statement* stmt) {
                               m_Output += "mov [rsp + " +
                                   std::to_string((m_StackSize - v->StackLocation - 1) * 8) + "], rax\n";
                           },
+                   //    [&](const IfStatement* ifStmt) {
+                   //        GenerateExpression(ifStmt->Cond);
+                   //        Pop("rax");
+                   //        const std::string label = CreateLabel();
+                   //        m_Output += "test rax, rax\n";
+                   //        m_Output += "jz " + label + "\n";
+                   //        GenerateStatement(ifStmt->Then);
+                   //        m_Output += label + ":\n";
+                   //        if (ifStmt->Else) {
+                   //        }
+                   //    },
                    [&](const IfStatement* ifStmt) {
                        GenerateExpression(ifStmt->Cond);
                        Pop("rax");
-                       const std::string label = CreateLabel();
+
+                       const std::string elseLabel = CreateLabel();
+                       const std::string endLabel = CreateLabel();
+
                        m_Output += "test rax, rax\n";
-                       m_Output += "jz " + label + "\n";
+                       m_Output += "jz " + elseLabel + "\n";
+
+                       const int64_t stackBefore = m_StackSize;
+
+                       // then-branch
                        GenerateStatement(ifStmt->Then);
-                       m_Output += label + ":\n";
+                       const int64_t thenStack = m_StackSize;
+
+                       m_Output += "jmp " + endLabel + "\n";
+
+                       // else-branch
+                       m_Output += elseLabel + ":\n";
+                       m_StackSize = stackBefore;
+                       if (ifStmt->Else) {
+                           GenerateStatement(ifStmt->Else);
+                       }
+
+                       const int64_t elseStack = m_StackSize;
+
+                       // enforce stack agreement
+                       if (thenStack != elseStack) {
+                           Error("Stack height mismatch between if branches");
+                       }
+
+                       // merged stack height
+                       m_StackSize = thenStack;
+                       
+                       // end
+                       m_Output += endLabel + ":\n";
                    },
                    [&](const Block* scope) { GenerateBlock(scope); } },
         stmt->Stmt);

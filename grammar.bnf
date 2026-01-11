@@ -23,18 +23,18 @@ statement
     ;
 
 assignmentStatement
-    : IDENTIFIER '=' expression ';'
+    : IDENTIFIER '=' additiveExpression ';'
     ;
 
 ifStatement
-    : 'if' '(' expression ')' statement ('else' statement)?
+    : 'if' '(' additiveExpression ')' statement ('else' statement)?
     ;
 
-expression
-    : term (('+' | '-') term)*
+additiveExpression
+    : multiplicativeExpression (('+' | '-') multiplicativeExpression)*
     ;
 
-term
+multiplicativeExpression
     : factor (('*' | '/') factor)*
     ;
 

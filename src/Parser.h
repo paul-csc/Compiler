@@ -14,9 +14,8 @@ class Parser {
 
   private:
     Factor* ParseFactor();
-    Term* ParseTerm();
-    Expression* ParseExpression();
-    Declaration* ParseDeclaration();
+    MultiplicativeExpression* ParseMultiplicativeExpression();
+    AdditiveExpression* ParseExpression();
     Statement* ParseStatement();
     Block* ParseBlock();
 
@@ -25,12 +24,12 @@ class Parser {
     const Token& Consume() { return m_Tokens[m_Index++]; }
 
     template <typename... Args>
-    const Token* Match(TokenType first, Args... rest) {
+    bool Match(TokenType first, Args... rest) {
         const Token& tok = Peek();
         if (((tok.Type == first) || ... || (tok.Type == rest))) {
-            return &Consume();
+            return true;
         }
-        return nullptr;
+        return false;
     }
 
     Token Expect(TokenType type) {

@@ -15,67 +15,67 @@ Factor* Parser::ParseFactor() {
     const Token& tok = Peek();
 
     if (tok.Type == END_OF_FILE) {
-        Error(m_Tokens.back().Location, "Expected term");
-    } else if (auto t = Match(LITERAL, IDENTIFIER)) {
-        return m_Allocator.alloc<Factor>(std::stoi(*t->Value));
+        Error(m_Tokens.back().Location, "Expected factor");
+    } else if (Match(LITERAL)) {
+        return m_Allocator.alloc<Factor>(std::stoi(*Consume().Value));
     } else if (Match(IDENTIFIER)) {
-        return m_Allocator.alloc<Factor>(*t->Value);
+        return m_Allocator.alloc<Factor>(*Consume().Value);
     } else if (Match(LPAREN)) {
-        Expression* expr = ParseExpression();
+        Consume();
+        AdditiveExpression* expr = ParseExpression();
         Expect(RPAREN);
         return m_Allocator.alloc<Factor>(expr);
     }
 
-    Error(tok.Location, "Unexpected token in term");
+    Error(tok.Location, "Unexpected token in factor");
     return nullptr; // never reached
 }
 
-Term* Parser::ParseTerm() {
-    Term* term = m_Allocator.alloc<Term>(ParseFactor());
+MultiplicativeExpression* Parser::ParseMultiplicativeExpression() {
+    MultiplicativeExpression* expr = m_Allocator.alloc<MultiplicativeExpression>(ParseFactor());
 
-    while (auto op = Match(STAR, FSLASH)) {
+    while (Match(STAR, FSLASH)) {
+        auto t = Consume();
         Factor* right = ParseFactor();
-        term->Right.emplace_back(TokenToStr(op->Type), right);
+        expr->Right.emplace_back(TokenToStr(t.Type), right);
     }
 
-    return term;
+    return expr;
 }
 
-Expression* Parser::ParseExpression() {
-    Term* left = ParseTerm();
-    Expression* term = m_Allocator.alloc<Expression>(left);
+AdditiveExpression* Parser::ParseExpression() {
+    MultiplicativeExpression* left = ParseMultiplicativeExpression();
+    AdditiveExpression* expr = m_Allocator.alloc<AdditiveExpression>(left);
 
-    while (auto op = Match(PLUS, MINUS)) {
-        Term* right = ParseTerm();
-        term->Right.emplace_back(TokenToStr(op->Type), right);
+    while (Match(PLUS, MINUS)) {
+        auto t = Consume();
+        MultiplicativeExpression* right = ParseMultiplicativeExpression();
+        expr->Right.emplace_back(TokenToStr(t.Type), right);
     }
 
-    return term;
-}
-
-Declaration* Parser::ParseDeclaration() {
-    Expect(INT);
-    std::string_view name = *Expect(IDENTIFIER).Value;
-    Expect(SEMICOLON);
-    return m_Allocator.alloc<Declaration>(name);
+    return expr;
 }
 
 Statement* Parser::ParseStatement() {
-    if (auto id = Match(IDENTIFIER)) {
-        std::string_view name = *id->Value;
+    if (Match(IDENTIFIER)) {
+        std::string_view name = *Consume().Value;
         Expect(EQUAL);
-        Expression* expr = ParseExpression();
+        AdditiveExpression* expr = ParseExpression();
         Expect(SEMICOLON);
 
         AssignmentStatement* stmt = m_Allocator.alloc<AssignmentStatement>(name, expr);
         return m_Allocator.alloc<Statement>(stmt);
     } else if (Match(IF)) {
+        Consume();
         Expect(LPAREN);
-        Expression* expr = ParseExpression();
+        AdditiveExpression* expr = ParseExpression();
         Expect(RPAREN);
-        Expect(LBRACE);
 
         IfStatement* stmt = m_Allocator.alloc<IfStatement>(expr, ParseStatement());
+        if (Match(ELSE)) {
+            Consume();
+            stmt->Else = ParseStatement();
+        }
         return m_Allocator.alloc<Statement>(stmt);
     } else if (Match(LBRACE)) {
         return m_Allocator.alloc<Statement>(ParseBlock());
@@ -88,10 +88,15 @@ Statement* Parser::ParseStatement() {
 Block* Parser::ParseBlock() {
     Block* block = m_Allocator.alloc<Block>();
     Expect(LBRACE);
-    while (Peek().Type != RBRACE && Peek().Type != END_OF_FILE) {
+    while (!Match(RBRACE, END_OF_FILE)) {
         BlockItem* item;
-        if (Peek().Type == INT) {
-            item = m_Allocator.alloc<BlockItem>(ParseDeclaration());
+        if (Match(INT)) {
+            Consume();
+            std::string_view name = *Expect(IDENTIFIER).Value;
+            Expect(SEMICOLON);
+            Declaration* decl = m_Allocator.alloc<Declaration>(name);
+
+            item = m_Allocator.alloc<BlockItem>(decl);
         } else {
             item = m_Allocator.alloc<BlockItem>(ParseStatement());
         }

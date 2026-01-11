@@ -3,27 +3,27 @@
 
 namespace Compiler {
 
-struct Expression;
+struct AdditiveExpression;
 struct Statement;
 struct Block;
 
 struct Factor {
-    explicit Factor(Expression* e) : Value(e) {}
+    explicit Factor(AdditiveExpression* e) : Value(e) {}
     explicit Factor(const std::string& s) : Value(s) {}
     explicit Factor(int i) : Value(i) {}
-    std::variant<Expression*, std::string, int> Value;
+    std::variant<AdditiveExpression*, std::string, int> Value;
 };
 
-struct Term {
-    explicit Term(Factor* t) : Left(t) {}
+struct MultiplicativeExpression {
+    explicit MultiplicativeExpression(Factor* t) : Left(t) {}
     Factor* Left;
     std::vector<std::pair<std::string, Factor*>> Right;
 };
 
-struct Expression {
-    explicit Expression(Term* t) : Left(t) {}
-    Term* Left;
-    std::vector<std::pair<std::string, Term*>> Right;
+struct AdditiveExpression {
+    explicit AdditiveExpression(MultiplicativeExpression* t) : Left(t) {}
+    MultiplicativeExpression* Left;
+    std::vector<std::pair<std::string, MultiplicativeExpression*>> Right;
 };
 
 struct Declaration {
@@ -32,15 +32,17 @@ struct Declaration {
 };
 
 struct AssignmentStatement {
-    AssignmentStatement(std::string_view name, Expression* expr) : Ident(name), Expr(expr) {}
+    AssignmentStatement(std::string_view name, AdditiveExpression* expr) : Ident(name), Expr(expr) {}
     std::string Ident;
-    Expression* Expr;
+    AdditiveExpression* Expr;
 };
 
 struct IfStatement {
-    IfStatement(Expression* cond, Statement* s) : Cond(cond), Then(s) {}
-    Expression* Cond;
+    IfStatement(AdditiveExpression* cond, Statement* then, Statement* e = nullptr)
+        : Cond(cond), Then(then), Else(e) {}
+    AdditiveExpression* Cond;
     Statement* Then;
+    Statement* Else = nullptr; // optional
 };
 
 struct Statement {

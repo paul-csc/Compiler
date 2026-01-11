@@ -42,6 +42,8 @@ std::vector<Token> Lex(std::string_view src) {
                 tokens.emplace_back(INT, startLoc);
             } else if (lexeme == TokenToStr(IF)) {
                 tokens.emplace_back(IF, startLoc);
+            } else if (lexeme == TokenToStr(ELSE)) {
+                tokens.emplace_back(ELSE, startLoc);
             } else {
                 tokens.emplace_back(IDENTIFIER, startLoc, lexeme);
             }
