@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Parser.h"
+#include "parser.h"
 
 namespace Compiler {
 

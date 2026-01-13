@@ -14,16 +14,22 @@ struct Factor {
     std::variant<AdditiveExpression*, std::string, int> Value;
 };
 
-struct MultiplicativeExpression {
+struct MultiplicativeExpression { // '*' | '/'
     explicit MultiplicativeExpression(Factor* t) : Left(t) {}
     Factor* Left;
     std::vector<std::pair<std::string, Factor*>> Right;
 };
 
-struct AdditiveExpression {
+struct AdditiveExpression { // '+' | '-'
     explicit AdditiveExpression(MultiplicativeExpression* t) : Left(t) {}
     MultiplicativeExpression* Left;
     std::vector<std::pair<std::string, MultiplicativeExpression*>> Right;
+};
+
+struct RelationalExpression { // '<' | '>' | '<=' | '>='
+    explicit RelationalExpression(AdditiveExpression* t) : Left(t) {}
+    AdditiveExpression* Left;
+    std::vector<std::pair<std::string, AdditiveExpression*>> Right;
 };
 
 struct Declaration {

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Generator.h"
+#include "generator.h"
 
 namespace Compiler {
 
@@ -144,7 +144,7 @@ void Generator::GenerateStatement(const Statement* stmt) {
 
                        // merged stack height
                        m_StackSize = thenStack;
-                       
+
                        // end
                        m_Output += endLabel + ":\n";
                    },

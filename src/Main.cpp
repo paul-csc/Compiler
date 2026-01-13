@@ -1,11 +1,11 @@
 #include "pch.h"
-#include "Generator.h"
-#include "Lexer.h"
-#include "Parser.h"
+#include "generator.h"
+#include "lexer.h"
+#include "parser.h"
 
 int main(int argc, const char* argv[]) {
-    std::filesystem::path inputFilePath = "test/Main.c";
-    std::filesystem::path outputFilePath = "test/Main.asm";
+    std::filesystem::path inputFilePath = "test/main.c";
+    std::filesystem::path outputFilePath = "test/main.asm";
 
     std::ifstream inputFile(inputFilePath, std::ios::in);
     if (!inputFile) {

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "pch.h"
-#include "AST.h"
-#include "Lexer.h"
-#include "Utils.h"
+#include "ast.h"
+#include "lexer.h"
+#include "utils.h"
 
 namespace Compiler {
 

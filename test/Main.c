@@ -1,13 +1,12 @@
 
 {
     int a;
-    a = 3 + 4 * 5 - 23;
+    int b;
+    a = 1;
 
     if (a) {
-        int b;
-        b = (2 + a) * 2;
+        b = 0;
     } else {
-        int b;
-        b = a + 1;
+        b = 1;
     }
 }
