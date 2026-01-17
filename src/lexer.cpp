@@ -44,6 +44,8 @@ std::vector<Token> Lex(std::string_view src) {
                 tokens.emplace_back(IF, startLoc);
             } else if (lexeme == TokenToStr(ELSE)) {
                 tokens.emplace_back(ELSE, startLoc);
+            } else if (lexeme == TokenToStr(WHILE)) {
+                tokens.emplace_back(WHILE, startLoc);
             } else {
                 tokens.emplace_back(IDENTIFIER, startLoc, lexeme);
             }
@@ -66,9 +68,16 @@ std::vector<Token> Lex(std::string_view src) {
             case '+': tokens.emplace_back(PLUS, startLoc); break;
             case '-': tokens.emplace_back(MINUS, startLoc); break;
             case '*': tokens.emplace_back(STAR, startLoc); break;
-            case '/': tokens.emplace_back(FSLASH, startLoc); break;
+            case '/':
+                if (src[i + 1] == '/') {
+                    while (src[++i] != '\n')
+                        ;
+                    ++loc.Line;
+                } else {
+                    tokens.emplace_back(FSLASH, startLoc);
+                }
+                break;
             case '%': tokens.emplace_back(PERCENT, startLoc); break;
-            case '^': tokens.emplace_back(CARET, startLoc); break;
             case '=': tokens.emplace_back(EQUAL, startLoc); break;
 
             // separators
@@ -78,13 +87,6 @@ std::vector<Token> Lex(std::string_view src) {
             case '}': tokens.emplace_back(RBRACE, startLoc); break;
             case ';': tokens.emplace_back(SEMICOLON, startLoc); break;
             case ',': tokens.emplace_back(COMMA, startLoc); break;
-
-            // comments
-            case '#':
-                while (src[++i] != '\n')
-                    ;
-                ++loc.Line;
-                break;
 
             default: Error(startLoc, std::format("Unknow token '{}'", c));
         }

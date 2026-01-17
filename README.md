@@ -9,19 +9,35 @@ An educational compiler for a simple **C-like custom language**, targeting **x86
 ## Language Syntax
 
 This compiler supports a minimal subset of C-like syntax:
+- Integer variables
+- Scopes (blocks)
+- Integer arithmetic (+, -, *, /)
+- If/else
+- While loops
+- Comments
 
-```c
+Example:
+```
 {
-    int a;
-    a = (1 + 2) * 3;
+    int x;
+    x = (1 + 2) * 3;
     
     // comments
 
+    int a;
     int b;
-    if (a) {
-        b = 1;
-    } else {
-        b = 0;
+    int counter;
+
+    counter = 0;
+
+    a = 50;
+    while (a) {
+        b = 5;
+        while (b) {
+            b = b - 1;
+            counter = counter + 1;
+        }
+        a = a - 1;
     }
 }
 ```

@@ -53,11 +53,18 @@ struct IfStatement {
     Statement* Else = nullptr; // optional
 };
 
+struct WhileStatement {
+    WhileStatement(AdditiveExpression* cond, Statement* loop) : Cond(cond), Loop(loop) {}
+    AdditiveExpression* Cond;
+    Statement* Loop;
+};
+
 struct Statement {
     explicit Statement(AssignmentStatement* a) : Stmt(a) {}
     explicit Statement(IfStatement* i) : Stmt(i) {}
+    explicit Statement(WhileStatement* w) : Stmt(w) {}
     explicit Statement(Block* b) : Stmt(b) {}
-    std::variant<AssignmentStatement*, IfStatement*, Block*> Stmt;
+    std::variant<AssignmentStatement*, IfStatement*, WhileStatement*, Block*> Stmt;
 };
 
 struct BlockItem {

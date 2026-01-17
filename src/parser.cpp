@@ -75,6 +75,18 @@ Statement* Parser::ParseStatement() {
             stmt->Else = ParseStatement();
         }
         return m_Allocator.alloc<Statement>(stmt);
+    } else if (Match(WHILE)) {
+        Consume();
+        Expect(LPAREN);
+        AdditiveExpression* expr = ParseExpression();
+        Expect(RPAREN);
+
+        WhileStatement* stmt = m_Allocator.alloc<WhileStatement>(expr, ParseStatement());
+        if (Match(ELSE)) {
+            Consume();
+            stmt->Loop = ParseStatement();
+        }
+        return m_Allocator.alloc<Statement>(stmt);
     } else if (Match(LBRACE)) {
         return m_Allocator.alloc<Statement>(ParseBlock());
     }

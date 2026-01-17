@@ -3,9 +3,9 @@
 #include <array>
 #include <cstdint>
 #include <optional>
-#include <vector>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace Compiler {
 
@@ -17,6 +17,7 @@ enum TokenType {
     INT,
     IF,
     ELSE,
+    WHILE,
 
     LPAREN,
     RPAREN,
@@ -30,7 +31,6 @@ enum TokenType {
     STAR,
     FSLASH,
     PERCENT,
-    CARET,
     EQUAL,
 
     END_OF_FILE,
@@ -44,7 +44,7 @@ struct SourceLocation {
 };
 
 constexpr std::array<std::string_view, TOKEN_TYPE_NB> TokenNames = { "identifier", "literal", "return", "int",
-    "if", "else", "(", ")", "{", "}", ";", ",", "+", "-", "*", "/", "%", "^", "=", "eof" };
+    "if", "else", "while", "(", ")", "{", "}", ";", ",", "+", "-", "*", "/", "%", "=", "eof" };
 
 constexpr std::string_view TokenToStr(TokenType type) {
     return TokenNames.at(type);
