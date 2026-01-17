@@ -1,10 +1,11 @@
 #include "generator.h"
+#include "symbol_table.h"
 #include "utils.h"
 #include <format>
 
 namespace Compiler {
 
-Generator::Generator(Program* prog) : m_Program(prog) {}
+Generator::Generator(Program* prog, ScopeStack& scopes) : m_Program(prog), m_Scopes(scopes) {}
 
 std::string Generator::GenerateAsm() {
     m_StackSize = 0;
@@ -29,29 +30,6 @@ void Generator::Pop(const std::string& reg) {
     m_StackSize--;
 }
 
-void Generator::BeginScope() {
-    m_Scopes.emplace_back();
-}
-
-void Generator::EndScope() {
-    size_t popCount = m_Scopes.back().size();
-    if (popCount != 0) {
-        m_Output += "add rsp, " + std::to_string(popCount * 8) + "\n";
-    }
-    m_StackSize -= popCount;
-    m_Scopes.pop_back();
-}
-
-Generator::Variable* Generator::LookupVar(const std::string& name) {
-    for (auto it = m_Scopes.rbegin(); it != m_Scopes.rend(); ++it) {
-        auto found = it->find(name);
-        if (found != it->end()) {
-            return &found->second;
-        }
-    }
-    return nullptr;
-}
-
 std::string Generator::CreateLabel() {
     return "label" + std::to_string(m_LabelCount++);
 }
@@ -62,40 +40,43 @@ void Generator::DebugPrint(const std::string& reg) {
 }
 
 void Generator::GeneratePrimary(const Primary* primary) {
-    std::visit(overloaded{ [&](int i) {
+    std::visit(overloaded{ [&](int64_t i) {
                               m_Output += "mov rax, " + std::to_string(i) + "\n";
                               Push("rax");
                           },
                    [&](const std::string& s) {
-                       const Variable* v = LookupVar(s);
-
-                       if (!v) {
-                           Error("Undeclared variable '" + s + "'");
-                       }
-                       Push("QWORD [rsp + " + std::to_string((m_StackSize - v->StackLocation - 1) * 8) + "]");
+                       auto& v = m_Scopes.Lookup(s);
+                       Push("QWORD [rsp + " + std::to_string((m_StackSize - v.StackOffset - 1) * 8) + "]");
                    },
                    [&](const Expression* expr) { GenerateExpression(expr); } },
         primary->Value);
 }
 
-void Generator::GenerateMultiplicativeExpression(const MultiplicativeExpression* expr) {
-    GeneratePrimary(expr->Left);
-    for (const auto& [op, right] : expr->Right) {
-        GeneratePrimary(right);
-        Pop("rax");
-        Pop("rbx");
+void Generator::GeneratePostfixExpression(const PostfixExpression* expr) {
+    GeneratePrimary(expr->Prim);
+}
 
-        if (op == "*") {
-            m_Output += "imul rax, rbx\n";
-        } else if (op == "/") {
-            m_Output += "mov rcx, rax\n";
-            m_Output += "mov rax, rbx \n";
-            m_Output += "xor rdx, rdx\n";
-            m_Output += "div rcx\n";
+void Generator::GenerateMultiplicativeExpression(const MultiplicativeExpression* expr) {
+    GeneratePostfixExpression(expr->Left);
+    for (const auto& [op, right] : expr->Right) {
+        GeneratePostfixExpression(right);
+        Pop("rcx");
+        Pop("rax");
+
+        if (op == BinaryOp::Mul) {
+            m_Output += "imul rax, rcx\n";
+            Push("rax");
+        } else if (op == BinaryOp::Div || op == BinaryOp::Mod) {
+            m_Output += "cqo\n";
+            m_Output += "idiv rcx\n";
+            if (op == BinaryOp::Div) {
+                Push("rax");
+            } else {
+                Push("rdx");
+            }
         } else {
-            Error(std::format("Unknow operator '{}'", op));
+            Error("Unknown operator");
         }
-        Push("rax");
     }
 }
 
@@ -106,14 +87,14 @@ void Generator::GenerateAdditiveExpression(const AdditiveExpression* expr) {
         Pop("rax");
         Pop("rbx");
 
-        if (op == "+") {
-            m_Output += "add rax, rbx\n";
-            Push("rax");
-        } else if (op == "-") {
+        if (op == BinaryOp::Add) {
+            m_Output += "add rbx, rax\n";
+            Push("rbx");
+        } else if (op == BinaryOp::Sub) {
             m_Output += "sub rbx, rax\n";
             Push("rbx");
         } else {
-            Error(std::format("Unknow operator '{}'", op));
+            Error("Unknown operator");
         }
     }
 }
@@ -126,16 +107,16 @@ void Generator::GenerateRelationalExpression(const RelationalExpression* expr) {
         Pop("rbx");
 
         m_Output += "cmp rbx, rax\n";
-        if (op == ">") {
+        if (op == BinaryOp::Gt) {
             m_Output += "setg al\n";
-        } else if (op == ">=") {
+        } else if (op == BinaryOp::Ge) {
             m_Output += "setge al\n";
-        } else if (op == "<") {
+        } else if (op == BinaryOp::Lt) {
             m_Output += "setl al\n";
-        } else if (op == "<=") {
+        } else if (op == BinaryOp::Le) {
             m_Output += "setle al\n";
         } else {
-            Error(std::format("Unknow operator '{}'", op));
+            Error("Unknown operator");
         }
         m_Output += "movzx rax, al\n";
         Push("rax");
@@ -150,12 +131,12 @@ void Generator::GenerateEqualityExpression(const EqualityExpression* expr) {
         Pop("rbx");
 
         m_Output += "cmp rbx, rax\n";
-        if (op == "==") {
+        if (op == BinaryOp::Eq) {
             m_Output += "sete al\n";
-        } else if (op == "!=") {
+        } else if (op == BinaryOp::Ne) {
             m_Output += "setne al\n";
         } else {
-            Error(std::format("Unknow operator '{}'", op));
+            Error("Unknown operator");
         }
         m_Output += "movzx rax, al\n";
         Push("rax");
@@ -163,44 +144,53 @@ void Generator::GenerateEqualityExpression(const EqualityExpression* expr) {
 }
 
 void Generator::GenerateExpression(const Expression* expr) {
-    GenerateEqualityExpression(expr->Expr);
+    if (expr->Expr->Ident) { // assignment
+        auto& v = m_Scopes.Lookup(*expr->Expr->Ident);
+
+        GenerateEqualityExpression(expr->Expr->Expr);
+        Pop("rax");
+
+        m_Output += "mov [rsp + " + std::to_string((m_StackSize - v.StackOffset - 1) * 8) + "], rax\n";
+        DebugPrint("rax");
+    } else {
+        GenerateEqualityExpression(expr->Expr->Expr);
+        Pop("rax");
+    }
 }
 
 void Generator::GenerateBlock(const Block* scope) {
-    BeginScope();
+    m_Scopes.EnterScope();
+
     for (const auto& item : scope->Items) {
         std::visit(overloaded{ [&](const Statement* stmt) { GenerateStatement(stmt); },
                        [&](const Declaration* decl) {
-                           auto& scope = m_Scopes.back();
-
-                           if (scope.contains(decl->Ident)) {
-                               Error("Redefinition of identifier: " + decl->Ident);
-                           }
+                           m_Scopes.Insert(decl->Ident, { VARIABLE, m_StackSize - 1 });
 
                            m_Output += "sub rsp, 8\n";
                            m_StackSize++;
-
-                           scope.emplace(decl->Ident, Variable{ m_StackSize - 1 });
                        } },
             item->Item);
     }
-    EndScope();
+
+    size_t popCount = m_Scopes.ExitScope();
+    if (popCount != 0) {
+        m_Output += "add rsp, " + std::to_string(popCount * 8) + "\n";
+    }
+    m_StackSize -= popCount;
 }
 
 void Generator::GenerateStatement(const Statement* stmt) {
-    std::visit(overloaded{ [&](const AssignmentStatement* assignStmt) {
-                              const Variable* v = LookupVar(assignStmt->Ident);
-
-                              if (!v) {
-                                  Error("Undeclared identifier: " + assignStmt->Ident);
-                              }
-                              GenerateExpression(assignStmt->Expr);
-                              Pop("rax");
-                              m_Output += "mov [rsp + " +
-                                  std::to_string((m_StackSize - v->StackLocation - 1) * 8) + "], rax\n";
-
-                              DebugPrint("rax");
-                          },
+    std::visit(overloaded{ [&](const ExpressionStatement* exprStmt) { GenerateExpression(exprStmt->Expr); },
+                   [&](const ReturnStatement* retStmt) {
+                       if (retStmt->Expr) {
+                           GenerateExpression(retStmt->Expr);
+                           Pop("rdi");
+                       } else {
+                           m_Output += "xor rdi, rdi\n";
+                       }
+                       m_Output += "mov rax, 60\n";
+                       m_Output += "syscall\n";
+                   },
                    [&](const IfStatement* ifStmt) {
                        GenerateExpression(ifStmt->Cond);
                        Pop("rax");

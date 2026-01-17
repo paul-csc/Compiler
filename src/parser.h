@@ -12,10 +12,12 @@ class Parser {
 
   private:
     Primary* ParsePrimary();
+    PostfixExpression* ParsePostfixExpression();
     MultiplicativeExpression* ParseMultiplicativeExpression();
     AdditiveExpression* ParseAdditiveExpression();
     RelationalExpression* ParseRelationalExpression();
     EqualityExpression* ParseEqualityExpression();
+    AssignmentExpression* ParseAssignmentExpression();
     Expression* ParseExpression();
     Statement* ParseStatement();
     Block* ParseBlock();

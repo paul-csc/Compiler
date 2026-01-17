@@ -1,6 +1,8 @@
 #include "generator.h"
 #include "lexer.h"
 #include "parser.h"
+#include "semantic_analyzer.h"
+#include "symbol_table.h"
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -20,13 +22,12 @@ int main() {
     inputFile.close();
 
     Compiler::Lexer lexer(sourceCode);
-    const auto tokens = lexer.Lex();
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        std::cout << std::format("{}: {}\n", i + 1, Compiler::TokenToStr(tokens[i].Type));
-    }
-
-    Compiler::Parser parser(tokens);
-    Compiler::Generator generator(parser.ParseProgram());
+    Compiler::Parser parser(lexer.Lex());
+    auto program = parser.ParseProgram();
+    Compiler::ScopeStack scopes;
+    Compiler::SemanticAnalyzer analyzer(program, scopes);
+    analyzer.Analyze();
+    Compiler::Generator generator(program, scopes);
 
     std::ofstream outputFile(outputFilePath);
     if (!outputFile) {
@@ -36,7 +37,5 @@ int main() {
     outputFile.close();
 
     std::cout << "Output written to " << outputFilePath << "\n";
-
-    std::cin.get();
     return 0;
 }

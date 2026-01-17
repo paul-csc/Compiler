@@ -32,7 +32,15 @@ class ArenaAllocator {
     std::byte* m_Offset;
 };
 
-void Error(SourceLocation loc, const std::string& msg);
-void Error(const std::string& msg);
+template <typename... Ts>
+struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+
+template <typename... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
+[[noreturn]] void Error(SourceLocation loc, const std::string& msg);
+[[noreturn]] void Error(const std::string& msg);
 
 } // namespace Compiler

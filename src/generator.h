@@ -6,36 +6,24 @@
 
 namespace Compiler {
 
-struct Generator {
+class ScopeStack;
+
+class Generator {
   public:
-    explicit Generator(Program* prog);
+    explicit Generator(Program* prog, ScopeStack& scopes);
     std::string GenerateAsm();
 
   private:
-    struct Variable {
-        int64_t StackLocation;
-    };
-
-    template <typename... Ts>
-    struct overloaded : Ts... {
-        using Ts::operator()...;
-    };
-
-    template <typename... Ts>
-    overloaded(Ts...) -> overloaded<Ts...>;
 
     void Push(const std::string& reg);
     void Pop(const std::string& reg);
 
-    void BeginScope();
-    void EndScope();
-
-    Variable* LookupVar(const std::string& name);
     std::string CreateLabel();
 
     void DebugPrint(const std::string& reg);
 
     void GeneratePrimary(const Primary* primary);
+    void GeneratePostfixExpression(const PostfixExpression* expr);
     void GenerateMultiplicativeExpression(const MultiplicativeExpression* expr);
     void GenerateAdditiveExpression(const AdditiveExpression* expr);
     void GenerateRelationalExpression(const RelationalExpression* expr);
@@ -50,9 +38,7 @@ struct Generator {
 
     int m_LabelCount = 0;
 
-    // std::unordered_map<std::string, Variable> m_Variables;
-
-    std::vector<std::unordered_map<std::string, Variable>> m_Scopes;
+    ScopeStack& m_Scopes;
 };
 
 } // namespace Compiler

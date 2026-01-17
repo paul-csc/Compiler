@@ -1,4 +1,3 @@
-
 program
     : block
     ;
@@ -17,25 +16,55 @@ declaration
     ;
 
 statement
-    : assignmentStatement
+    : expressionStatement
+    | returnStatement
     | ifStatement
+    | whileStatement
     | block
     ;
 
-assignmentStatement
-    : IDENTIFIER '=' additiveExpression ';'
+expressionStatement
+    : expression ';'
+    ;
+
+returnStatement
+    : 'return' expression ';'
     ;
 
 ifStatement
-    : 'if' '(' additiveExpression ')' statement ('else' statement)?
+    : 'if' '(' expression ')' statement ('else' statement)?
     ;
+
+whileStatement
+    : 'while' '(' expression ')' statement
+    ;
+
+expression
+    : assignmentExpression
+    ;
+
+assignmentExpression
+    : IDENTIFIER '=' equalityExpression
+    | equalityExpression
+    ;
+
+equalityExpression
+    : relationalExpression (('==' | '!=') relationalExpression)*
+    ;
+
+relationalExpression
+    : additiveExpression (('>' | '>=' | '<' | '<=') additiveExpression)*
 
 additiveExpression
     : multiplicativeExpression (('+' | '-') multiplicativeExpression)*
     ;
 
 multiplicativeExpression
-    : primary (('*' | '/') primary)*
+    : postfixExpression (('*' | '/' | '%') postfixExpression)*
+    ;
+
+postfixExpression
+    : primary
     ;
 
 primary
