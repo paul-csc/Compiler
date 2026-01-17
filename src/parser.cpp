@@ -54,13 +54,26 @@ AdditiveExpression* Parser::ParseAdditiveExpression() {
     return expr;
 }
 
-EqualityExpression* Parser::ParseEqualityExpression() {
+RelationalExpression* Parser::ParseRelationalExpression() {
     AdditiveExpression* left = ParseAdditiveExpression();
+    RelationalExpression* expr = m_Allocator.alloc<RelationalExpression>(left);
+
+    while (Match(GT, GE, LT, LE)) {
+        auto t = Consume();
+        AdditiveExpression* right = ParseAdditiveExpression();
+        expr->Right.emplace_back(TokenToStr(t.Type), right);
+    }
+
+    return expr;
+}
+
+EqualityExpression* Parser::ParseEqualityExpression() {
+    RelationalExpression* left = ParseRelationalExpression();
     EqualityExpression* expr = m_Allocator.alloc<EqualityExpression>(left);
 
     while (Match(IS_EQUAL, NOT_EQUAL)) {
         auto t = Consume();
-        AdditiveExpression* right = ParseAdditiveExpression();
+        RelationalExpression* right = ParseRelationalExpression();
         expr->Right.emplace_back(TokenToStr(t.Type), right);
     }
 

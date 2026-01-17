@@ -38,6 +38,7 @@ struct Generator {
     void GeneratePrimary(const Primary* primary);
     void GenerateMultiplicativeExpression(const MultiplicativeExpression* expr);
     void GenerateAdditiveExpression(const AdditiveExpression* expr);
+    void GenerateRelationalExpression(const RelationalExpression* expr);
     void GenerateEqualityExpression(const EqualityExpression* expr);
     void GenerateExpression(const Expression* expr);
     void GenerateBlock(const Block* expr);

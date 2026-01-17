@@ -86,7 +86,7 @@ void Generator::GenerateMultiplicativeExpression(const MultiplicativeExpression*
         Pop("rbx");
 
         if (op == "*") {
-            m_Output += "mul rbx\n";
+            m_Output += "imul rax, rbx\n";
         } else if (op == "/") {
             m_Output += "mov rcx, rax\n";
             m_Output += "mov rax, rbx \n";
@@ -118,18 +118,41 @@ void Generator::GenerateAdditiveExpression(const AdditiveExpression* expr) {
     }
 }
 
-void Generator::GenerateEqualityExpression(const EqualityExpression* expr) {
+void Generator::GenerateRelationalExpression(const RelationalExpression* expr) {
     GenerateAdditiveExpression(expr->Left);
     for (const auto& [op, right] : expr->Right) {
         GenerateAdditiveExpression(right);
         Pop("rax");
         Pop("rbx");
 
+        m_Output += "cmp rbx, rax\n";
+        if (op == ">") {
+            m_Output += "setg al\n";
+        } else if (op == ">=") {
+            m_Output += "setge al\n";
+        } else if (op == "<") {
+            m_Output += "setl al\n";
+        } else if (op == "<=") {
+            m_Output += "setle al\n";
+        } else {
+            Error(std::format("Unknow operator '{}'", op));
+        }
+        m_Output += "movzx rax, al\n";
+        Push("rax");
+    }
+}
+
+void Generator::GenerateEqualityExpression(const EqualityExpression* expr) {
+    GenerateRelationalExpression(expr->Left);
+    for (const auto& [op, right] : expr->Right) {
+        GenerateRelationalExpression(right);
+        Pop("rax");
+        Pop("rbx");
+
+        m_Output += "cmp rbx, rax\n";
         if (op == "==") {
-            m_Output += "cmp rbx, rax\n";
             m_Output += "sete al\n";
         } else if (op == "!=") {
-            m_Output += "cmp rbx, rax\n";
             m_Output += "setne al\n";
         } else {
             Error(std::format("Unknow operator '{}'", op));

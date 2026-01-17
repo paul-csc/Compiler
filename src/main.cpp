@@ -19,7 +19,8 @@ int main() {
     sourceCode += '\n';
     inputFile.close();
 
-    const auto tokens = Compiler::Lex(sourceCode);
+    Compiler::Lexer lexer(sourceCode);
+    const auto tokens = lexer.Lex();
     for (size_t i = 0; i < tokens.size(); ++i) {
         std::cout << std::format("{}: {}\n", i + 1, Compiler::TokenToStr(tokens[i].Type));
     }

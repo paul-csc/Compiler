@@ -17,21 +17,27 @@ struct Primary {
 };
 
 struct MultiplicativeExpression { // '*' | '/'
-    explicit MultiplicativeExpression(Primary* t) : Left(t) {}
+    explicit MultiplicativeExpression(Primary* p) : Left(p) {}
     Primary* Left;
     std::vector<std::pair<std::string, Primary*>> Right;
 };
 
 struct AdditiveExpression { // '+' | '-'
-    explicit AdditiveExpression(MultiplicativeExpression* t) : Left(t) {}
+    explicit AdditiveExpression(MultiplicativeExpression* e) : Left(e) {}
     MultiplicativeExpression* Left;
     std::vector<std::pair<std::string, MultiplicativeExpression*>> Right;
 };
 
-struct EqualityExpression { // '==' | '!='
-    explicit EqualityExpression(AdditiveExpression* t) : Left(t) {}
+struct RelationalExpression { // '>' | '>=' | '<' | '<='
+    explicit RelationalExpression(AdditiveExpression* e) : Left(e) {}
     AdditiveExpression* Left;
     std::vector<std::pair<std::string, AdditiveExpression*>> Right;
+};
+
+struct EqualityExpression { // '==' | '!='
+    explicit EqualityExpression(RelationalExpression* e) : Left(e) {}
+    RelationalExpression* Left;
+    std::vector<std::pair<std::string, RelationalExpression*>> Right;
 };
 
 struct Expression {

@@ -4,19 +4,25 @@ extern print
 _start:
 sub rsp, 8
 sub rsp, 8
-mov rax, 3
+mov rax, 0
 push rax
+mov rax, 1
+push rax
+pop rax
+pop rbx
+sub rbx, rax
+push rbx
 pop rax
 mov [rsp + 8], rax
 mov rdi, rax
 call print
 push QWORD [rsp + 8]
-mov rax, 3
+mov rax, 0
 push rax
 pop rax
 pop rbx
 cmp rbx, rax
-sete al
+setg al
 movzx rax, al
 push rax
 pop rax
@@ -32,12 +38,12 @@ jmp label1
 label0:
 label1:
 push QWORD [rsp + 8]
-mov rax, 4
+mov rax, 0
 push rax
 pop rax
 pop rbx
 cmp rbx, rax
-setne al
+setl al
 movzx rax, al
 push rax
 pop rax
@@ -45,6 +51,12 @@ test rax, rax
 jz label2
 mov rax, 0
 push rax
+mov rax, 1
+push rax
+pop rax
+pop rbx
+sub rbx, rax
+push rbx
 pop rax
 mov [rsp + 0], rax
 mov rdi, rax

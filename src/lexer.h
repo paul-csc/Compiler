@@ -31,9 +31,13 @@ enum TokenType {
     STAR,
     FSLASH,
     PERCENT,
-    EQUAL,
+    GT,
+    GE,
+    LT,
+    LE,
     IS_EQUAL,
     NOT_EQUAL,
+    EQUAL,
 
     END_OF_FILE,
 
@@ -46,7 +50,8 @@ struct SourceLocation {
 };
 
 constexpr std::array<std::string_view, TOKEN_TYPE_NB> TokenNames = { "identifier", "literal", "return", "int",
-    "if", "else", "while", "(", ")", "{", "}", ";", ",", "+", "-", "*", "/", "%", "=", "==", "!=", "eof" };
+    "if", "else", "while", "(", ")", "{", "}", ";", ",", "+", "-", "*", "/", "%", ">", ">=", "<",
+    "<=", "==", "!=", "=", "eof" };
 
 constexpr std::string_view TokenToStr(TokenType type) {
     return TokenNames.at(type);
@@ -61,6 +66,35 @@ struct Token {
     std::optional<std::string> Value = std::nullopt; // literal or identifier
 };
 
-std::vector<Token> Lex(std::string_view src);
+class Lexer {
+  public:
+    Lexer(std::string_view src);
+    std::vector<Token> Lex();
+
+  private:
+    static bool IsAlpha(char c);
+    static bool IsAlnum(char c);
+    static bool IsDigit(char c);
+    static bool IsSpace(char c);
+
+    void Advance();
+    void Newline();
+
+    template <typename Predicate>
+    std::string_view LexWhile(Predicate predicate) {
+        const size_t start = m_Index;
+        while (m_Index < m_Size && predicate(m_Src[m_Index])) {
+            Advance();
+        }
+        return std::string_view(m_Src.data() + start, m_Index - start);
+    }
+
+    bool Match(char expected);
+
+    const std::string_view m_Src;
+    const size_t m_Size;
+    size_t m_Index;
+    SourceLocation m_Loc;
+};
 
 } // namespace Compiler

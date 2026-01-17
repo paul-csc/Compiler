@@ -1,13 +1,12 @@
 {
     int a;
-    int is_equal;
+    int b;
 
-    a = 3;
-
-    if (a == 3) {
-        is_equal = 1;
+    a = 0 - 1;
+    if (a > 0) {
+        b = 1;
     }
-    if (a != 4) {
-        is_equal = 0;
+    if (a < 0) {
+        b = 0 - 1;
     }
 }

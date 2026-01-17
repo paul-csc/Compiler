@@ -14,6 +14,7 @@ class Parser {
     Primary* ParsePrimary();
     MultiplicativeExpression* ParseMultiplicativeExpression();
     AdditiveExpression* ParseAdditiveExpression();
+    RelationalExpression* ParseRelationalExpression();
     EqualityExpression* ParseEqualityExpression();
     Expression* ParseExpression();
     Statement* ParseStatement();
