@@ -35,9 +35,11 @@ struct Generator {
 
     void DebugPrint(const std::string& reg);
 
-    void GenerateFactor(const Factor* factor);
+    void GeneratePrimary(const Primary* primary);
     void GenerateMultiplicativeExpression(const MultiplicativeExpression* expr);
-    void GenerateExpression(const AdditiveExpression* expr);
+    void GenerateAdditiveExpression(const AdditiveExpression* expr);
+    void GenerateEqualityExpression(const EqualityExpression* expr);
+    void GenerateExpression(const Expression* expr);
     void GenerateBlock(const Block* expr);
     void GenerateStatement(const Statement* stmt);
 

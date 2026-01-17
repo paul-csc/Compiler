@@ -12,6 +12,7 @@ This compiler supports a minimal subset of C-like syntax:
 - Integer variables
 - Scopes (blocks)
 - Integer arithmetic (+, -, *, /)
+- Equality (==, !=)
 - If/else
 - While loops
 - Comments

@@ -61,7 +61,7 @@ void Generator::DebugPrint(const std::string& reg) {
     m_Output += "call print\n";
 }
 
-void Generator::GenerateFactor(const Factor* factor) {
+void Generator::GeneratePrimary(const Primary* primary) {
     std::visit(overloaded{ [&](int i) {
                               m_Output += "mov rax, " + std::to_string(i) + "\n";
                               Push("rax");
@@ -74,14 +74,14 @@ void Generator::GenerateFactor(const Factor* factor) {
                        }
                        Push("QWORD [rsp + " + std::to_string((m_StackSize - v->StackLocation - 1) * 8) + "]");
                    },
-                   [&](const AdditiveExpression* expr) { GenerateExpression(expr); } },
-        factor->Value);
+                   [&](const Expression* expr) { GenerateExpression(expr); } },
+        primary->Value);
 }
 
 void Generator::GenerateMultiplicativeExpression(const MultiplicativeExpression* expr) {
-    GenerateFactor(expr->Left);
+    GeneratePrimary(expr->Left);
     for (const auto& [op, right] : expr->Right) {
-        GenerateFactor(right);
+        GeneratePrimary(right);
         Pop("rax");
         Pop("rbx");
 
@@ -99,7 +99,7 @@ void Generator::GenerateMultiplicativeExpression(const MultiplicativeExpression*
     }
 }
 
-void Generator::GenerateExpression(const AdditiveExpression* expr) {
+void Generator::GenerateAdditiveExpression(const AdditiveExpression* expr) {
     GenerateMultiplicativeExpression(expr->Left);
     for (const auto& [op, right] : expr->Right) {
         GenerateMultiplicativeExpression(right);
@@ -116,6 +116,31 @@ void Generator::GenerateExpression(const AdditiveExpression* expr) {
             Error(std::format("Unknow operator '{}'", op));
         }
     }
+}
+
+void Generator::GenerateEqualityExpression(const EqualityExpression* expr) {
+    GenerateAdditiveExpression(expr->Left);
+    for (const auto& [op, right] : expr->Right) {
+        GenerateAdditiveExpression(right);
+        Pop("rax");
+        Pop("rbx");
+
+        if (op == "==") {
+            m_Output += "cmp rbx, rax\n";
+            m_Output += "sete al\n";
+        } else if (op == "!=") {
+            m_Output += "cmp rbx, rax\n";
+            m_Output += "setne al\n";
+        } else {
+            Error(std::format("Unknow operator '{}'", op));
+        }
+        m_Output += "movzx rax, al\n";
+        Push("rax");
+    }
+}
+
+void Generator::GenerateExpression(const Expression* expr) {
+    GenerateEqualityExpression(expr->Expr);
 }
 
 void Generator::GenerateBlock(const Block* scope) {

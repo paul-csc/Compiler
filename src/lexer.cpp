@@ -78,7 +78,24 @@ std::vector<Token> Lex(std::string_view src) {
                 }
                 break;
             case '%': tokens.emplace_back(PERCENT, startLoc); break;
-            case '=': tokens.emplace_back(EQUAL, startLoc); break;
+            case '=':
+                if (src[i + 1] == '=') {
+                    tokens.emplace_back(IS_EQUAL, startLoc);
+                    ++i;
+                    ++loc.Line;
+                } else {
+                    tokens.emplace_back(EQUAL, startLoc);
+                }
+                break;
+            case '!':
+                if (src[i + 1] == '=') {
+                    tokens.emplace_back(NOT_EQUAL, startLoc);
+                    ++i;
+                    ++loc.Line;
+                    break;
+                } else {
+                    Error(startLoc, std::format("Unknow token '{}'", src[i + 1]));
+                }
 
             // separators
             case '(': tokens.emplace_back(LPAREN, startLoc); break;

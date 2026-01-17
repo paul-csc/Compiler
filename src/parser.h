@@ -11,9 +11,11 @@ class Parser {
     Program* ParseProgram();
 
   private:
-    Factor* ParseFactor();
+    Primary* ParsePrimary();
     MultiplicativeExpression* ParseMultiplicativeExpression();
-    AdditiveExpression* ParseExpression();
+    AdditiveExpression* ParseAdditiveExpression();
+    EqualityExpression* ParseEqualityExpression();
+    Expression* ParseExpression();
     Statement* ParseStatement();
     Block* ParseBlock();
 

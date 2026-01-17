@@ -32,6 +32,8 @@ enum TokenType {
     FSLASH,
     PERCENT,
     EQUAL,
+    IS_EQUAL,
+    NOT_EQUAL,
 
     END_OF_FILE,
 
@@ -44,7 +46,7 @@ struct SourceLocation {
 };
 
 constexpr std::array<std::string_view, TOKEN_TYPE_NB> TokenNames = { "identifier", "literal", "return", "int",
-    "if", "else", "while", "(", ")", "{", "}", ";", ",", "+", "-", "*", "/", "%", "=", "eof" };
+    "if", "else", "while", "(", ")", "{", "}", ";", ",", "+", "-", "*", "/", "%", "=", "==", "!=", "eof" };
 
 constexpr std::string_view TokenToStr(TokenType type) {
     return TokenNames.at(type);

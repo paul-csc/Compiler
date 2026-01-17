@@ -35,10 +35,10 @@ additiveExpression
     ;
 
 multiplicativeExpression
-    : factor (('*' | '/') factor)*
+    : primary (('*' | '/') primary)*
     ;
 
-factor
+primary
     : '(' expression ')'
     | IDENTIFIER
     | NUMBER

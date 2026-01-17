@@ -1,16 +1,13 @@
 {
-    int base;
-    int exp;
-    int result;
+    int a;
+    int is_equal;
 
-    base = 5;
-    exp = 4;
+    a = 3;
 
-    result = 1;
-    while (exp) {
-        result = result * base;
-        exp = exp - 1;
+    if (a == 3) {
+        is_equal = 1;
     }
-
-    result = result;
+    if (a != 4) {
+        is_equal = 0;
+    }
 }

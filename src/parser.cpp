@@ -11,37 +11,37 @@ Program* Parser::ParseProgram() {
     return m_Allocator.alloc<Program>(ParseBlock());
 }
 
-Factor* Parser::ParseFactor() {
+Primary* Parser::ParsePrimary() {
     if (Match(END_OF_FILE)) {
-        Error(m_Tokens.back().Location, "Expected factor");
+        Error(m_Tokens.back().Location, "Expected primary");
     } else if (Match(LITERAL)) {
-        return m_Allocator.alloc<Factor>(std::stoi(*Consume().Value));
+        return m_Allocator.alloc<Primary>(std::stoi(*Consume().Value));
     } else if (Match(IDENTIFIER)) {
-        return m_Allocator.alloc<Factor>(*Consume().Value);
+        return m_Allocator.alloc<Primary>(*Consume().Value);
     } else if (Match(LPAREN)) {
         Consume();
-        AdditiveExpression* expr = ParseExpression();
+        Expression* expr = ParseExpression();
         Expect(RPAREN);
-        return m_Allocator.alloc<Factor>(expr);
+        return m_Allocator.alloc<Primary>(expr);
     }
 
-    Error("Unexpected token in factor");
+    Error("Unexpected token in primary");
     return nullptr; // never reached
 }
 
 MultiplicativeExpression* Parser::ParseMultiplicativeExpression() {
-    MultiplicativeExpression* expr = m_Allocator.alloc<MultiplicativeExpression>(ParseFactor());
+    MultiplicativeExpression* expr = m_Allocator.alloc<MultiplicativeExpression>(ParsePrimary());
 
     while (Match(STAR, FSLASH)) {
         auto t = Consume();
-        Factor* right = ParseFactor();
+        Primary* right = ParsePrimary();
         expr->Right.emplace_back(TokenToStr(t.Type), right);
     }
 
     return expr;
 }
 
-AdditiveExpression* Parser::ParseExpression() {
+AdditiveExpression* Parser::ParseAdditiveExpression() {
     MultiplicativeExpression* left = ParseMultiplicativeExpression();
     AdditiveExpression* expr = m_Allocator.alloc<AdditiveExpression>(left);
 
@@ -54,11 +54,28 @@ AdditiveExpression* Parser::ParseExpression() {
     return expr;
 }
 
+EqualityExpression* Parser::ParseEqualityExpression() {
+    AdditiveExpression* left = ParseAdditiveExpression();
+    EqualityExpression* expr = m_Allocator.alloc<EqualityExpression>(left);
+
+    while (Match(IS_EQUAL, NOT_EQUAL)) {
+        auto t = Consume();
+        AdditiveExpression* right = ParseAdditiveExpression();
+        expr->Right.emplace_back(TokenToStr(t.Type), right);
+    }
+
+    return expr;
+}
+
+Expression* Parser::ParseExpression() {
+    return m_Allocator.alloc<Expression>(ParseEqualityExpression());
+}
+
 Statement* Parser::ParseStatement() {
     if (Match(IDENTIFIER)) {
         std::string_view name = *Consume().Value;
         Expect(EQUAL);
-        AdditiveExpression* expr = ParseExpression();
+        Expression* expr = ParseExpression();
         Expect(SEMICOLON);
 
         AssignmentStatement* stmt = m_Allocator.alloc<AssignmentStatement>(name, expr);
@@ -66,7 +83,7 @@ Statement* Parser::ParseStatement() {
     } else if (Match(IF)) {
         Consume();
         Expect(LPAREN);
-        AdditiveExpression* expr = ParseExpression();
+        Expression* expr = ParseExpression();
         Expect(RPAREN);
 
         IfStatement* stmt = m_Allocator.alloc<IfStatement>(expr, ParseStatement());
@@ -78,7 +95,7 @@ Statement* Parser::ParseStatement() {
     } else if (Match(WHILE)) {
         Consume();
         Expect(LPAREN);
-        AdditiveExpression* expr = ParseExpression();
+        Expression* expr = ParseExpression();
         Expect(RPAREN);
 
         WhileStatement* stmt = m_Allocator.alloc<WhileStatement>(expr, ParseStatement());
